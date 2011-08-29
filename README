@@ -182,12 +182,31 @@ Possible variables to change/consider include:
 
 ------------------------------------------------------
 
-5 To Do list/Improvements
+5 Post-processing functions
 
-- Currently the program only calculates spectrums based on files
+PyCOOL has a number of different post-processing functions.
+These include:
+ - field spectrum
+ - number density spectrum
+ - energy density spectrum
+ - effective mass squared of the field(s)
+ - comoving number density
+ - the fraction of particles in relativistic regime
+ - empirical CDF and PDF from energy densities
+ - skewness and kurtosis of the scalar field(s)
+ - spatial correlation length of the total energy density (See Defrost paper
+   for a definition.)
+
+Notice that functions these have been tested but not throughly.
+
+------------------------------------------------------
+
+6 To Do list/Improvements
+
+- Currently the program only calculates spectrums based on the files
 that are written during runtime. This should be updated to
 calculate the spectrums at runtime. This way more spectrums could be
-calculated without using much more diskspace.
+calculated without using much more disk space.
 
 - Multi-GPU support should be included. This might however take some
 work due to the periodicity of the lattice.
