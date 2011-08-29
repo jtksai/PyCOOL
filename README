@@ -156,7 +156,7 @@ In VisIt these are available under Add -> Curve.
 
 ------------------------------------------------------
 
-4 Running you own models
+4 Running your own models
 
 The code has been tested with various different models.
 
@@ -171,7 +171,7 @@ Possible variables to change/consider include:
  - number of fields
  - initial field values
  - field potential
-   We done our best to test the functionality of the program
+   We've done our best to test the functionality of the program
    with different potential functions. It might however fail
    to write CUDA compatible code in some cases.
    In this case the code in lattice.py and misc_functions.py should
