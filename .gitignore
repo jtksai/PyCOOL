@@ -1,0 +1,5 @@
+# no .pyc files
+*.pyc
+# Ignore data folder:
+/data
+
