@@ -55,7 +55,6 @@ Files included:
     - curvaton_si.py
     - oscillon.py
     - q_ball.py
-    - two_field_oscillon.py
 
   - README-file
   - compile_libs script
@@ -180,6 +179,19 @@ Possible variables to change/consider include:
    One cause of errors is exponentiation e.g. terms of the form f**n.
    Currently the program uses format_to_cuda function to write
    these terms in the form f^n = f*f*···*f.
+
+------------------------------------------------------
+
+5 To Do list/Improvements
+
+- Currently the program only calculates spectrums based on files
+that are written during runtime. This should be updated to
+calculate the spectrums at runtime. This way more spectrums could be
+calculated without using much more diskspace.
+
+- Multi-GPU support should be included. This might however take some
+work due to the periodicity of the lattice.
+
 
 ------------------------------------------------------
 This is an example of an .aksetup-defaults.py file.
