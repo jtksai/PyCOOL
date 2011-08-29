@@ -102,7 +102,7 @@ class Lattice:
                  spects = False, dists = False,
                  unit_m = 'm', scale = True, max_reg = None):
 
-        print '\nLattice size =', n
+        print '\nLattice size = ' + str(n) + '**3'
 
         self.init_mode = init_m
         self.hom_mode = hom_mode

@@ -2,4 +2,4 @@
 *.pyc
 # Ignore data folder:
 /data
-
+/output_kernels/*.cu
