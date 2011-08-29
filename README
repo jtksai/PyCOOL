@@ -70,7 +70,7 @@ PyCUDA http://mathema.tician.de/software/pycuda which needs to be installed.
 The data output also uses Pyvisfile http://mathema.tician.de/software/pyvisfile
 to write SILO files that are visualized in LLNL VisIt program.
 
-Short descreption of the installion process:
+Short description of the installation process:
 
 It is highly recommended to use SILO files for the output.
 HDF5 files are supported in theory but they have not been tested properly
@@ -142,7 +142,7 @@ also in other operating systems.
 
 Typing 'python main_program.py' runs the code.
 The current program prints to the screen information of current step number,
-scale factor, canonical momemtum p and the accumulated numerical error.
+scale factor, canonical momentum p and the accumulated numerical error.
 
 The program creates a new folder by time stamp in the data folder.
 For large lattices and frequent data saving generated data can be
@@ -166,8 +166,8 @@ and then import this file in main_program.py.
 Possible variables to change/consider include:
  - n controls the number of points per side of lattice
  - L is the length of the side of the lattice
- - mpl is the reduced planck mass in terms of field 1 mass m=1
- - Mpl is the unreduced planck mass in terms of field 1 mass m=1
+ - mpl is the reduced Planck mass in terms of field 1 mass m=1
+ - Mpl is the unreduced Planck mass in terms of field 1 mass m=1
  - number of fields
  - initial field values
  - field potential
@@ -178,7 +178,7 @@ Possible variables to change/consider include:
    be studied more carefully to understand why the program fails.
    One cause of errors is exponentiation e.g. terms of the form f**n.
    Currently the program uses format_to_cuda function to write
-   these terms in the form f^n = f*f*···*f.
+   these terms in the form f**n = f*f*···*f.
 
 ------------------------------------------------------
 
@@ -197,7 +197,7 @@ These include:
  - spatial correlation length of the total energy density (See Defrost paper
    for a definition.)
 
-Notice that functions these have been tested but not throughly.
+Notice that functions these have been tested but not thoroughly.
 
 ------------------------------------------------------
 
