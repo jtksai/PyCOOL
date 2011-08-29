@@ -1,7 +1,7 @@
 ___________________PyCOOL README____________________
 
 PyCOOL v. 0.997300203937
-Copyright (C) 2011 Jani Sainio <jani.sainio@utu.fi>
+Copyright (C) 2011 Jani Sainio <jani.sainio at utu.fi>
 Distributed under the terms of the GNU General Public License
 http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -23,10 +23,14 @@ The program has been written in Python language in order to make it really easy
 to adapt the code to different scalar field models. What this means is that in
 ideal situations for a new preheating model only the list of potential
 functions in main_program.py has to be changed with the necessary initial values.
-Everything else should be done automatically.
+Everything else should be done automatically. Please see the other model files
+for example.
 
 Files included:
+
   - Python files:
+    - calc_spect.pyx
+    - f_init.pyx
     - field_init.py
     - lattice.py
     - main_program.py
@@ -34,15 +38,27 @@ Files included:
     - setup.py
     - spectrum.py
     - symp_integrator.py
-  - CUDA Template files:
+
+  - CUDA and template files:
+    - gpu_3dconv.cu
     - kernel_H2.cu
     - kernel_H3.cu
-    - kernel_linear_H.cu
-    - kernel_transform.cu
+    - kernel_k2.cu
+    - kernel_linear_evo.cu
     - pd_kernel.cu
     - rho_pres.cu
-  - README
-  - compile_spect script
+    - spatial_corr.cu
+
+  - Model files:
+    - chaotic.py
+    - curvaton.py
+    - curvaton_si.py
+    - oscillon.py
+    - q_ball.py
+    - two_field_oscillon.py
+
+  - README-file
+  - compile_libs script
 
 ------------------------------------------------------
 
@@ -73,7 +89,7 @@ git clone http://git.tiker.net/trees/pyvisfile.git
 which will create new folders and download the necessary files.
 Before proceeding it is recommended to create .aksetup-defaults.py file
 in your $HOME folder or in /etc folder. I have included an example of an
-.aksetup-defaults.py file at end of this file. When you have
+.aksetup-defaults.py file at end of this README. When you have
 the .aksetup-defaults.py file done the next step is to install the python
 libraries by running
 
@@ -100,7 +116,7 @@ The spectrum calculations are done with Cython to speed the calculations (~200 t
 compared to ordinary Python code). Therefore Cython has to be also installed.
 This can done for example with 'sudo easy_install cython' in Linux.
 
-Finally run the compile_spect script that calls 'python setup.py build_ext --inplace'
+Finally run the compile_libs script that calls 'python setup.py build_ext --inplace'
 to make the calc_spect.pyx into shared library file that the PyCOOL can use to
 calculate the spectrums.
 
@@ -115,7 +131,7 @@ In summary, install
   - pyfftw
   - jinja2
   - VisIt
-  Then run compile_spect script to build the shared library file for the spectrum
+  Then run compile_libs script to build the shared library file for the spectrum
   calculations.
 
 Current version has been tested in Debian Squeeze and Ubuntu 10.04 but it should work
