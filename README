@@ -1,0 +1,200 @@
+___________________PyCOOL README____________________
+
+PyCOOL v. 0.997300203937
+Copyright (C) 2011 Jani Sainio <jani.sainio@utu.fi>
+Distributed under the terms of the GNU General Public License
+http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+
+Please cite arXiv:
+if you use this code in your research.
+See also http://www.physics.utu.fi/theory/particlecosmology/pycool/
+
+------------------------------------------------------
+
+1 Introduction
+
+PyCOOL is a Python + CUDA program that solves the evolution of interacting
+scalar fields in an expanding universe. PyCOOL uses modern GPUs
+to solve this evolution and make this computation much faster.
+See http://arxiv.org/abs/0911.5692 for more information on the GPU
+algorithm.
+
+The program has been written in Python language in order to make it really easy
+to adapt the code to different scalar field models. What this means is that in
+ideal situations for a new preheating model only the list of potential
+functions in main_program.py has to be changed with the necessary initial values.
+Everything else should be done automatically.
+
+Files included:
+  - Python files:
+    - field_init.py
+    - lattice.py
+    - main_program.py
+    - misc_functions.py
+    - setup.py
+    - spectrum.py
+    - symp_integrator.py
+  - CUDA Template files:
+    - kernel_H2.cu
+    - kernel_H3.cu
+    - kernel_linear_H.cu
+    - kernel_transform.cu
+    - pd_kernel.cu
+    - rho_pres.cu
+  - README
+  - compile_spect script
+
+------------------------------------------------------
+
+2 Installation and dependencies
+
+PyCOOL naturally needs CUDA drivers installed into your machine
+and preferably a fast NVIDIA GPU (GTX 470 and Tesla C2050 cards tested)
+in order to achieve the speed advantage it can give. PyCOOL is built on 
+PyCUDA http://mathema.tician.de/software/pycuda which needs to be installed.
+The data output also uses Pyvisfile http://mathema.tician.de/software/pyvisfile
+to write SILO files that are visualized in LLNL VisIt program.
+
+Short descreption of the installion process:
+
+It is highly recommended to use SILO files for the output.
+HDF5 files are supported in theory but they have not been tested properly
+and the program writes much more data in the SILO files.
+SILO can be downloaded from https://wci.llnl.gov/codes/silo/downloads.html
+and installed with the given instructions.
+
+The easiest way to install PyCUDA and Pyvisfile is to use
+git and the following commands:
+
+git clone http://git.tiker.net/trees/pycuda.git
+git clone http://git.tiker.net/trees/pyublas.git
+git clone http://git.tiker.net/trees/pyvisfile.git
+
+which will create new folders and download the necessary files.
+Before proceeding it is recommended to create .aksetup-defaults.py file
+in your $HOME folder or in /etc folder. I have included an example of an
+.aksetup-defaults.py file at end of this file. When you have
+the .aksetup-defaults.py file done the next step is to install the python
+libraries by running
+
+  python setup.py build
+  sudo python setup.py install
+
+in the downloaded package folders. Further PyCUDA install instructions
+are available in http://wiki.tiker.net/PyCuda/Installation .
+
+The field initialization also uses pyfftw package to calculate DST-II. This can be
+downloaded from https://launchpad.net/pyfftw . Note that there was an error in older
+version of pyfftw that caused an error in DST-II calculations 
+https://bugs.launchpad.net/pyfftw/+bug/585809 . In newer version this is fixed.
+
+The analytical calculations needed when calculating field potentials and
+potential derivatives are done with SymPy http://sympy.org/ . This can installed
+with easy_install or downloaded from https://github.com/sympy/sympy .
+
+PyCOOL uses then textual templating to write the necessary CUDA files. This is done
+with jinja2 library http://jinja.pocoo.org/docs/ . 'easy_install jinja2' should install
+this library.
+
+The spectrum calculations are done with Cython to speed the calculations (~200 times 
+compared to ordinary Python code). Therefore Cython has to be also installed.
+This can done for example with 'sudo easy_install cython' in Linux.
+
+Finally run the compile_spect script that calls 'python setup.py build_ext --inplace'
+to make the calc_spect.pyx into shared library file that the PyCOOL can use to
+calculate the spectrums.
+
+After all these necessary steps the program is ready to be used.
+
+In summary, install
+  - SymPy
+  - SILO libraries
+  - PyCUDA
+  - Pyublas
+  - Pyvisfile
+  - pyfftw
+  - jinja2
+  - VisIt
+  Then run compile_spect script to build the shared library file for the spectrum
+  calculations.
+
+Current version has been tested in Debian Squeeze and Ubuntu 10.04 but it should work
+also in other operating systems.
+
+------------------------------------------------------
+
+3 Running
+
+Typing 'python main_program.py' runs the code.
+The current program prints to the screen information of current step number,
+scale factor, canonical momemtum p and the accumulated numerical error.
+
+The program creates a new folder by time stamp in the data folder.
+For large lattices and frequent data saving generated data can be
+several hundred gigabytes. The folder also includes a simple info file
+that tells basic information about the model used to generate the data.
+These include the initial values and the potential functions.
+
+After the simulation is done PyCOOL can calculate spectrums used in
+LatticeEasy and Defrost that are written into the generated SILO files.
+In VisIt these are available under Add -> Curve.
+
+------------------------------------------------------
+
+4 Running you own models
+
+The code has been tested with various different models.
+
+In order to simulate your own model create a model file in models folder
+and then import this file in main_program.py.
+
+Possible variables to change/consider include:
+ - n controls the number of points per side of lattice
+ - L is the length of the side of the lattice
+ - mpl is the reduced planck mass in terms of field 1 mass m=1
+ - Mpl is the unreduced planck mass in terms of field 1 mass m=1
+ - number of fields
+ - initial field values
+ - field potential
+   We done our best to test the functionality of the program
+   with different potential functions. It might however fail
+   to write CUDA compatible code in some cases.
+   In this case the code in lattice.py and misc_functions.py should
+   be studied more carefully to understand why the program fails.
+   One cause of errors is exponentiation e.g. terms of the form f**n.
+   Currently the program uses format_to_cuda function to write
+   these terms in the form f^n = f*f*···*f.
+
+------------------------------------------------------
+This is an example of an .aksetup-defaults.py file.
+Remember to modify this to your systems settings.
+
+.aksetup-defaults.py:
+------------------------------------------------------
+BOOST_COMPILER = 'gcc43'
+BOOST_INC_DIR = ['/usr/include']
+BOOST_LIB_DIR = ['/usr/lib']
+BOOST_PYTHON_LIBNAME = ['boost_python-mt-py26']
+BOOST_THREAD_LIBNAME = ['boost_thread-mt']
+CUDADRV_LIBNAME = ['cuda']
+CUDADRV_LIB_DIR = ['/usr/lib']
+CUDA_ENABLE_GL = False
+CUDA_ROOT = '/usr/local/cuda'
+CUDA_TRACE = False
+CXXFLAGS = []
+LDFLAGS = []
+SILO_INC_DIR = ['/usr/local/silo/include']
+SILO_LIBNAME = ['silo']
+SILO_LIB_DIR = ['/usr/local/silo/lib']
+USE_SHIPPED_BOOST = True
+USE_SILO = True
+
+------------------------------------------------------
+
+
+Jani Sainio
+jani.sainio@utu.fi
+http://www.physics.utu.fi/theory/particlecosmology/pycool/
+Department of Physics and Astronomy
+University of Turku
+
