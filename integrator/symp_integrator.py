@@ -418,6 +418,7 @@ class Simulation:
         - total energy density field rho_gpu
         - total pressure density field pres_gpu
         - sum over z-direction of energy density rhosum_gpu
+        - sum over z-direction of pressure density pressum_gpu
         - sum_gpu that is used when updating canonical momentum p
         - pa_gpu used in calc_wk_conf function. It equals p'/a.
         - filetype = The used filetype. Either hdf5 or silo.
@@ -485,6 +486,9 @@ class Simulation:
         self.flush_a = []
         self.flush_p = []
         self.flush_H = []
+        self.flush_rho = []
+        self.flush_pres = []
+        
         "Absolute error:"
         self.fried_1 = []
         "Relative error:"
@@ -523,6 +527,10 @@ class Simulation:
 
         self.rhosum_gpu = gpuarray.zeros(lat.dims_xy, dtype = lat.prec_real)
         self.rhosum_host = cuda.pagelocked_zeros(lat.dims_xy,
+                                                 dtype = lat.prec_real)
+
+        self.pressum_gpu = gpuarray.zeros(lat.dims_xy, dtype = lat.prec_real)
+        self.pressum_host = cuda.pagelocked_zeros(lat.dims_xy,
                                                  dtype = lat.prec_real)
 
         self.sum_gpu = gpuarray.zeros(lat.dims_xy, dtype = lat.prec_real)
@@ -733,6 +741,14 @@ class Simulation:
             a_val = np.asarray(self.flush_a,dtype=np.float64)
             p_val = np.asarray(self.flush_p,dtype=np.float64)
             H_val = np.asarray(self.flush_H,dtype=np.float64)
+            rho_val = np.asarray(self.flush_rho,dtype=np.float64)
+            pres_val = np.asarray(self.flush_pres,dtype=np.float64)
+
+            "Matter fraction:"
+            r_val = 1.0 - 3.0*(pres_val/rho_val)
+
+            rho_inv = 1.0/rho_val
+
             omega_r_val = np.asarray(self.omega_rad_list,dtype=np.float64)
             omega_m_val = np.asarray(self.omega_mat_list,dtype=np.float64)
             omega_int_val = np.asarray(self.omega_int_list,dtype=np.float64)
@@ -742,7 +758,6 @@ class Simulation:
             evo_val = 1.0/(a_val**(1.5)*H_val)*lat.m
             evo2_val = 1.0/(a_val**(2)*H_val)*lat.m
 
-            
             "Numerical errors:"
             e_val = np.abs(np.asarray(self.fried_1,dtype=np.float64))
             er_val = np.abs(np.asarray(self.k_error,dtype=np.float64))
@@ -750,6 +765,10 @@ class Simulation:
             f.put_curve('a',t_val,a_val,optlist=options2)
             f.put_curve('p',t_val,p_val,optlist=options2)
             f.put_curve('H',t_val,H_val,optlist=options2)
+            f.put_curve('rho_ave',t_val,rho_val,optlist=options2)
+            f.put_curve('pres_ave',t_val,pres_val,optlist=options2)
+            f.put_curve('matterfrac',t_val,r_val,optlist=options2)
+            f.put_curve('matterfrac2',rho_inv,r_val,optlist=options2)
             f.put_curve('matscaledH',t_val, evo_val,optlist=options2)
             f.put_curve('radscaledH',t_val, evo2_val,optlist=options2)
             f.put_curve('lp',t_val, lp_val,optlist=options2)
@@ -1195,7 +1214,7 @@ class lin_evo_Kernel:
         self.lin_field_evo = self.mod2.get_function('gpu_evolve_lin_fields')
 
 class rp_Kernel:
-    "Used to calculate the energy densities of the fields"
+    "Used to calculate the energy and pressure densities of the fields"
     def __init__(self, lat, field_i, V, write_code=False):
         self.mod = kernel_rho_pres_gpu_code(lat, field_i, V, write_code)
         self.calc = self.mod.get_function('kernel_rho_pres_' +
@@ -1348,7 +1367,7 @@ class Evolution:
 
         "Cuda function arguments used in rho and pressure kernels:"
         self.rp_arg = [sim.rho_gpu, sim.pres_gpu, sim.rhosum_gpu,
-                       sim.inter_sum_gpu]
+                       sim.pressum_gpu, sim.inter_sum_gpu]
         for f in sim.fields:
             self.rp_arg.append(f.f_gpu)
         for f in sim.fields:
@@ -1363,6 +1382,7 @@ class Evolution:
 
         self.cuda_param_rp = dict(block=lat.cuda_block_2, grid=lat.cuda_grid)
 
+        "Cuda function arguments used in spatial correlation kernel:"
         self.sc_arg = [sim.rho_gpu, sim.sum_nabla_rho_gpu,
                        sim.sum_rho_squ_gpu]
         self.cuda_param_sc = dict(block=lat.cuda_block_2, grid=lat.cuda_grid)
@@ -1579,7 +1599,11 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     "Total energy density of the system:"
     cuda.memcpy_dtoh_async(sim.rhosum_host, sim.rhosum_gpu.gpudata, sim.stream)
 
-    "Inter action energy density:"
+    "Total pressure density of the system:"
+    cuda.memcpy_dtoh_async(sim.pressum_host, sim.pressum_gpu.gpudata,
+                           sim.stream)
+
+    "Interaction energy density:"
     cuda.memcpy_dtoh_async(sim.inter_sum_host,
                            sim.inter_sum_gpu.gpudata, sim.stream)
 
@@ -1587,8 +1611,9 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
 
     "Calculate average energy densities:"
 
-
     rho_tot = sum(sum(sim.rhosum_host))/VL + rho_m0/a**3.0 + rho_r0/a**4.0
+
+    pres_tot = sum(sum(sim.pressum_host))/VL + 1./3.*rho_r0/a**4.0
 
     rho_inter = sum(sum(sim.inter_sum_host))/VL
     
@@ -1619,12 +1644,12 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
 
     sim.stream.synchronize()
 
-    "Total energy density of the system:"
+    "Sum of nabla rho field:"
     cuda.memcpy_dtoh_async(sim.sum_nabla_rho_h,
                            sim.sum_nabla_rho_gpu.gpudata,
                            sim.stream)
 
-    "Total energy density of the system:"
+    "Sum of energy density squared field:"
     cuda.memcpy_dtoh_async(sim.sum_rho_squ_host,
                            sim.sum_rho_squ_gpu.gpudata,
                            sim.stream)
@@ -1634,6 +1659,8 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     lp = np.sqrt(sum(sum(sim.sum_rho_squ_host))/
                  sum(sum(sim.sum_nabla_rho_h)))*lat.m
 
+    """If lat.field_rho = True calculate the spatial correlations of
+       the individual fields:"""
     if lat.field_rho and lat.field_lp:
         for field in sim.fields:
             corr_kernel.calc(field.rho_gpu,
@@ -1643,12 +1670,12 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
 
             sim.stream.synchronize()
 
-            "Total energy density of the system:"
+            "Sum of nabla rho field:"
             cuda.memcpy_dtoh_async(field.sum_nabla_rho_h,
                            field.sum_nabla_rho_gpu.gpudata,
                            sim.stream)
 
-            "Total energy density of the system:"
+            "Sum of energy density squared field:"
             cuda.memcpy_dtoh_async(field.sum_rho_squ_h,
                            field.sum_rho_squ_gpu.gpudata,
                            sim.stream)
@@ -1669,6 +1696,10 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
         sim.flush_a.append(a)
         sim.flush_p.append(p/VL)
         sim.flush_H.append(sim.H)
+        
+        sim.flush_rho.append(rho_tot)
+        sim.flush_pres.append(pres_tot)
+
         sim.fried_1.append(Fried_1)
         sim.k_error.append(num_error_rel)
 

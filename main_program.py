@@ -17,9 +17,9 @@ from lattice import *
 """
 "Necessary constants defined in the model file:"
 
-from models.chaotic import *
+#from models.chaotic import *
 #from models.curvaton import *
-#from models.curvaton_si import *
+from models.curvaton_si import *
 #from models.oscillon import *
 #from models.q_ball import *
 
@@ -119,7 +119,7 @@ if evoQ:
             print 'H-hor:', (1./sim.H)/(sim.a*lat.L),
 
         sim.i0 += 1
-        evo.evo_step_4(lat, V, sim, lat.dtau)
+        evo.evo_step_2(lat, V, sim, lat.dtau)
 
 end.record()
 end.synchronize()

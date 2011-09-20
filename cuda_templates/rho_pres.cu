@@ -43,7 +43,7 @@ __device__ int period(int id, int block_id, int grid_dim, int dim)
 // Calculate rho and pressure
 //////////////////////////////////////////////////////////////////////
 
-__global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} *pres_w, {{ type_name_c }} *rho_sum_w, {{ type_name_c }} *int_term_w {% for i in range(1,fields_c+1) %}, {{ type_name_c }} *field{{i}}{% endfor %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *pi{{i}}_m{% endfor %} {% for i in range(1,fields_c+1) %}, {{ type_name_c }} *rho_field{{i}}_sum_w{% endfor %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *pres_field{{i}}_sum_w {% endfor %}{% if field_rho_c == True %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *field{{i}}_rho_w{% endfor %}{% endif %})
+__global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} *pres_w, {{ type_name_c }} *rho_sum_w, {{ type_name_c }} *pres_sum_w, {{ type_name_c }} *int_term_w {% for i in range(1,fields_c+1) %}, {{ type_name_c }} *field{{i}}{% endfor %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *pi{{i}}_m{% endfor %} {% for i in range(1,fields_c+1) %}, {{ type_name_c }} *rho_field{{i}}_sum_w{% endfor %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *pres_field{{i}}_sum_w {% endfor %}{% if field_rho_c == True %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *field{{i}}_rho_w{% endfor %}{% endif %})
 
 {
     // field = field which energy density in being calculated.
@@ -53,6 +53,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
     // pres_w = total pressure of the fields
     // int_w = energy density of interaction terms
     // rho_sum_w = sum over z direction of the total energy density of the fields
+    // pres_sum_w = sum over z direction of the total pressure density of the fields
     // rho_field{{ field_i_c }}_sum_w = sum over z direction of the energy density of field{{ field_i_c }}
     // pres_field{{ field_i_c }}_sum_w = sum over z direction of the pressure density of field{{ field_i_c }}
 
@@ -85,7 +86,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
    {% endif %}
 
     {{ type_name_c }} G, rho, pres;
-    {{ type_name_c }} sum_i = 0.;
+    {{ type_name_c }} sum_rho_tot = 0.;
+    {{ type_name_c }} sum_pres_tot = 0.;
     {{ type_name_c }} sum_rho_f = 0.;
     {{ type_name_c }} sum_pres_f = 0.;
     {{ type_name_c }} V_i, V;
@@ -165,7 +167,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
      field{{ field_i_c }}_rho_w[in_idx] = rho + V_i;
      {% endif %}
 
-     sum_i = rho + V;
+     sum_rho_tot = rho + V;
+     sum_pres_tot = pres - V;
      sum_rho_f = rho + V_i;
      sum_pres_f = pres - V_i;
 
@@ -261,8 +264,9 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
          field{{ field_i_c }}_rho_w[in_idx] = rho + V_i;
          {% endif %}
 
-         sum_i += rho  + V;
-         sum_rho_f += rho  + V_i;
+         sum_rho_tot += rho + V;
+         sum_pres_tot += pres - V;
+         sum_rho_f += rho + V_i;
          sum_pres_f += pres - V_i;
 
          {% if inter_c == True %}
@@ -350,8 +354,10 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
      field{{ field_i_c }}_rho_w[in_idx] = rho + V_i;
      {% endif %}
 
-     sum_i += rho  + V;
-     sum_rho_f += rho  + V_i;
+     sum_rho_tot += rho + V;
+     sum_pres_tot += pres - V;
+
+     sum_rho_f += rho + V_i;
      sum_pres_f += pres - V_i;
 
      {% if field_i_c == fields_c and inter_c == True %}
@@ -360,7 +366,9 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
 
      // Write to file:
 
-     rho_sum_w[i0]  {{ eq_sign_c }} sum_i;
+     rho_sum_w[i0]  {{ eq_sign_c }} sum_rho_tot;
+     pres_sum_w[i0]  {{ eq_sign_c }} sum_pres_tot;
+
      rho_field{{ field_i_c }}_sum_w[i0]  = sum_rho_f;
      pres_field{{ field_i_c }}_sum_w[i0]  = sum_pres_f;
 

@@ -69,17 +69,17 @@ dtau_m = 1./(2500*m)
 #dtau_m = 1./(1000*m)
 
 "Lattice side length:"
-L_m = 3.0/m
+L_m = 5./3./m
 
 "Lattice size, where n should be a power of two:"
-n = 256
+n = 32
 
 "Initial scale parameter:"
 a_in = 1.
 
 "Initial and final times:"
 t_in = 0.
-t_fin = 1000./m
+t_fin = 3000./m
 
 "How frequently to save data:"
 flush_freq = 4*512
