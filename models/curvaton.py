@@ -82,7 +82,7 @@ t_in = 0.
 t_fin = 3000./m
 
 "How frequently to save data:"
-flush_freq = 4*512
+flush_freq = 256
 
 "Set if to use linearized evolution:"
 lin_evo = False
