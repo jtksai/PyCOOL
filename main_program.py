@@ -23,30 +23,25 @@ from models.curvaton_si import *
 #from models.oscillon import *
 #from models.q_ball import *
 
+"Create a model:"
+model = Model()
 
 "Create a lattice:"
-
-lat = Lattice(n, L = L_m, fields = len(fields0), mpl = mpl, m = m, order = 4,
-              dtau = dtau_m, field_rho = field_r, field_lp = field_lpQ,
-              m2_eff = m2_effQ, test = testQ, stats = statsQ,
-              spects = spectQ, dists = distQ, scale = False,
-              init_m = 'defrost_cpu', max_reg = max_reg)
+lat = Lattice(model, order = 4, scale = False, init_m = 'defrost_cpu')
 
 " Create a potential function object:"
-V = Potential(lat, model_name, power_list, C_coeff, D_coeff,
-              v_list=V_list, v_int=V_int, lin_evo = lin_evo)
+V = Potential(lat, model)
 
-rho_fields = si.rho_field(lat, V, a_in, pis0, fields0)
+rho_fields = si.rho_field(lat, V, model.a_in, model.pis0, model.fields0)
 
 "Create simulation, evolution and spectrum instances:"
-sim = si.Simulation(lat, V, t_in, a_in, rho_r0, rho_m0, fields0, pis0,
-                    deSitter = deSitterQ, steps = 10000, lin_evo = lin_evo)
+sim = si.Simulation(model, lat, V, steps = 10000)
 
 evo = si.Evolution(lat, V, sim)
 postp = sp.Postprocess(lat, V)
 
 "Create a new folder for the data:"
-data_path = make_dir(lat, V, sim)
+data_path = make_dir(model, lat, V, sim)
 
 """Set the average values of the fields equal to
 their homogeneous values:"""
@@ -66,7 +61,7 @@ show_GPU_mem()
 start = cuda.Event()
 end = cuda.Event()
 
-start.record()
+#start.record()
 
 """
 ################
@@ -80,7 +75,7 @@ Start Simulation
 ####################################################################
 """
 
-if lin_evo:
+if model.lin_evo:
     "Save initial data:"
     evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
     sim.flush(lat, path = data_path)
@@ -107,28 +102,84 @@ if lin_evo:
 
 print '\nNon-linear simulation:\n'
 
-evo_homQ = True
-#evo_homQ = False
+
+#evo_homQ = True
+evo_homQ = False
 
 if evo_homQ:
-    while (sim.t_hom<t_fin):
-        #if (sim.i0_hom%(flush_freq)==0):
-            #evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
+    print '\nSolve homogeneous equations:\n'
+
+    while (sim.t_hom<model.t_fin):
+        if (sim.i0_hom%(model.flush_freq_hom)==0):
+            evo.calc_rho_pres_back(lat, V, sim, print_Q = True)
             #sim.flush(lat, path = data_path)
 
-        if (sim.i0_hom%(1024)==0):
-            print 't: ', sim.t_hom*m
+        #if (sim.i0_hom%(1024)==0):
+        #    print 't: ', sim.t_hom*model.m
 
         sim.i0_hom += 1
-        evo.evo_step_bg_2(lat, V, sim, lat.dtau)
+        evo.evo_step_bg_4(lat, V, sim, lat.dtau)
+
+
+if model.nonGaussianityQ:
+    print "Running non-Gaussianity simulations:"
+
+    start.record()
+
+    i0_sum = 0
+
+    for i in xrange(model.sim_num):
+        print 'Simulation run: ', i
+
+        data_folder = make_subdir(i, path = data_path)
+
+        while (sim.t<model.t_fin):
+            if (sim.i0%(model.flush_freq)==0):
+                evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
+                sim.flush(lat, path = data_folder)
+
+            sim.i0 += 1
+            evo.evo_step_2(lat, V, sim, lat.dtau)
+            
+        evo.calc_rho_pres(lat, V, sim, print_Q = True)
+        sim.flush(lat, path = data_folder, save_evo = False)
+
+        i0_sum += sim.i0
+
+        "Calculate spectrums and statistics:"
+        if lat.postQ:
+            postp.calc_post(lat, V, sim, data_folder, model.spect_m)
+
+        "Re-initialize system:"
+        if i < model.sim_num-1:
+            sim.reinit(model, lat, model.a_in)
+            "Adjust p:"
+            evo.calc_rho_pres(lat, V, sim, print_Q = False, print_w=False,
+                              flush=False)
+            sim.adjust_p(lat)
+
+
+
+    "Synchronize:"
+    end.record()
+    end.synchronize()
+
+    time_sim = end.time_since(start)*1e-3
+    per_stp = time_sim/i0_sum
+            
+
 
 
 #evoQ = True
 evoQ = False
 
+
 if evoQ:
-    while (sim.t<t_fin):
-        if (sim.i0%(flush_freq)==0):
+
+    start.record()
+
+    while (sim.t<model.t_fin):
+        if (sim.i0%(model.flush_freq)==0):
             evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
             sim.flush(lat, path = data_path)
 
@@ -138,14 +189,22 @@ if evoQ:
         sim.i0 += 1
         evo.evo_step_2(lat, V, sim, lat.dtau)
 
-end.record()
-end.synchronize()
+    end.record()
+    end.synchronize()
 
-time_sim = end.time_since(start)*1e-3
-per_stp = time_sim/sim.i0
+    evo.calc_rho_pres(lat, V, sim, print_Q = True)
+    sim.flush(lat, path = data_path, save_evo = False)
 
-evo.calc_rho_pres(lat, V, sim, print_Q = True)
-sim.flush(lat, path = data_path, save_evo = False)
+    time_sim = end.time_since(start)*1e-3
+    per_stp = time_sim/sim.i0
+
+    "Calculate spectrums and statistics:"
+    
+    if lat.postQ:
+        postp.calc_post(lat, V, sim, data_path, model.spect_m)
+
+    write_csv(data_path)
+
 
 "Print simulation time info:"
 sim_time(time_sim, per_stp, sim.i0, data_path)
@@ -161,10 +220,5 @@ Simulation finished
 # Calculate spectrums and statistics
 ####################################################################
 """
-
-if lat.postQ:
-    postp.calc_post(lat, V, sim, data_path, spect_m)
-
-write_csv(data_path)
 
 print 'Done.'

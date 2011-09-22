@@ -95,39 +95,44 @@ class Lattice:
         block_z2 = 1
     """
 
-    def __init__(self, n, L, fields, mpl, m, precision='double', order = 2,
+    def __init__(self, model, precision='double', order = 2,
+                 alpha=40.0, init_m = 'defrost_cpu',
+                 hom_mode = True, unit_m = 'm', scale = True):
+
+        """def __init__(self, n, L, fields, mpl, m, precision='double', order = 2,
                  alpha=40.0, dtau = None, init_m = 'defrost_cpu',
                  hom_mode = True, test = False, field_rho = False,
                  field_lp = False, m2_eff = True, stats = False,
                  spects = False, dists = False,
-                 unit_m = 'm', scale = True, max_reg = None):
+                 unit_m = 'm', scale = True, max_reg = None):"""
 
-        print '\nLattice size = ' + str(n) + '**3'
+        print '\nLattice size = ' + str(model.n) + '**3'
 
         self.init_mode = init_m
         self.hom_mode = hom_mode
-        self.test = test
+        self.test = model.testQ
+        
         "If unit == 'm' then uses [1/m] units in plots:"
         self.unit = unit_m
 
         self.scale = scale
 
-        self.m2_eff = m2_eff
+        self.m2_eff = model.m2_effQ
 
-        self.field_lp = field_lp
+        self.field_lp = model.field_lpQ
 
-        self.stats = stats
+        self.stats = model.statsQ
 
-        self.spect = spects
+        self.spect = model.spectQ
 
-        self.dist = dists
+        self.dist = model.distQ
 
         self.postQ = True if self.spect or self.stats or self.dist else False
 
         "Lattice dimensions in x and k-space:"
-        self.dimx = n
-        self.dimy = n
-        self.dimz = n
+        self.dimx = model.n
+        self.dimy = model.n
+        self.dimz = model.n
         self.dimz2 = int(self.dimz/2+1)
 
         self.dims_xy = (self.dimx, self.dimy)
@@ -135,16 +140,16 @@ class Lattice:
         self.dims_k = (self.dimz2, self.dimy, self.dimx)
         self.dims_k_alt = (self.dimx, self.dimy, self.dimz2)
 
-        self.stride = n*n
+        self.stride = model.n*model.n
         self.VL = self.dimx*self.dimy*self.dimz
 
         "Reduced Planck mass in terms of m:"
-        self.mpl = mpl
+        self.mpl = model.mpl
         "The mass that is used in hte units:"
-        self.m = m
+        self.m = model.m
 
         "This is used frequently in the evolution equation of a:"
-        self.VL_reduced = self.VL*mpl**2.0
+        self.VL_reduced = self.VL*model.mpl**2.0
 
         "Integrator order:"
         self.order = order
@@ -155,11 +160,11 @@ class Lattice:
         "alpha = dx/dtau"
         self.alpha = alpha
 
-        self.L = float(L)
-        self.dx = float(L)/n
+        self.L = float(model.L)
+        self.dx = float(model.L)/model.n
 
-        if dtau != None:
-            self.dtau = dtau
+        if model.dtau != None:
+            self.dtau = model.dtau
         else:
             self.dtau = self.dx/self.alpha
 
@@ -168,13 +173,13 @@ class Lattice:
         #    import sys
         #    sys.exit("Courant Condition violated!")
 
-        self.dk = 2*np.pi/(n*self.dx)
+        self.dk = 2*np.pi/(model.n*self.dx)
 
-        self.n = n
+        self.n = model.n
         "Nyquist frequency:"
-        self.nn = n/2+1
+        self.nn = model.n/2+1
         "Highest wavenumber on 3D grid:"
-        self.ns = int(np.sqrt(3)*(n/2) + 1)
+        self.ns = int(np.sqrt(3)*(model.n/2) + 1)
 
         """
         ########################################
@@ -182,7 +187,7 @@ class Lattice:
         ########################################
         """
 
-        if n == 32 or max_reg > 32:
+        if model.n == 32 or model.max_reg > 32:
             self.block_x = 16
             self.block_y = 8
             self.block_z = 1
@@ -202,8 +207,8 @@ class Lattice:
         """The following grid and block sizes are used in
            the linearized evolution:"""
 
-        self.maxk = 3*(n/2)**2
-        self.k_g = n/16
+        self.maxk = 3*(model.n/2)**2
+        self.k_g = model.n/16
 
         self.dim_lH = (self.dimx, 12*self.k_g)
 
@@ -240,10 +245,10 @@ class Lattice:
             self.complex_string = "float2"
             self.f_term='f'
             "Set the upper limit for the number of registers per thread:"
-            if max_reg == None:
+            if model.max_reg == None:
                 self.reglimit = '24'
             else:
-                self.reglimit = str(max_reg)
+                self.reglimit = str(model.max_reg)
             "Laplacian and nabla squared discretization coefficients:"
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float32)
@@ -256,10 +261,10 @@ class Lattice:
             self.complex_string = "double2"
             self.f_term=''
             "Set the upper limit for the number of registers per thread:"
-            if max_reg == None:
+            if model.max_reg == None:
                 self.reglimit = '32'
             else:
-                self.reglimit = str(max_reg)
+                self.reglimit = str(model.max_reg)
             "Laplacian and nabla squared discretization coefficients:"
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float64)
@@ -267,57 +272,53 @@ class Lattice:
 
         "Define the field variables:"
 
-        self.field_list = ['f'+str(i) for i in xrange(1,fields+1)]
-        self.field_back_list = ['f0'+str(i) for i in xrange(1,fields+1)]
-        self.dfield_list = ['df'+str(i) for i in xrange(1,fields+1)]
+        self.fields = len(model.fields0)
 
-        self.fields = fields
-        self.field_rho = field_rho
+        self.field_list = ['f'+str(i) for i in xrange(1,self.fields+1)]
+        self.field_back_list = ['f0'+str(i) for i in xrange(1,self.fields+1)]
+        self.dfield_list = ['df'+str(i) for i in xrange(1,self.fields+1)]
+
+        self.fields = self.fields
+        self.field_rho = model.field_rho
 
 class Potential:
     """Potential function class:
-       f_list = list of field names
-       v_list = list of potential functions of the fields
-       v_int = list of interaction terms
-       power_list = list of functions that are exponentiated in V
-       C_coeff = numerical values of the coefficients of V
-       D_coeff = numerical values of other parameters used in V
+       model = Model object
        lat = lattice class object
        n = degree of V"""
-    def __init__(self,  lat, model_n, power_list, C_coeff, D_coeff,
-                 v_list=None, v_int=None, dV_list = None, d2V_list = None,
-                 automatic = True, n=20, lin_evo = False):
+    def __init__(self,  lat, model, dV_list = None, d2V_list = None,
+                 automatic = True, n=20):
 
-        self.model_name = model_n
+        self.model_name = model.model_name
 
         "List of variables:"
         self.f_list = lat.field_list
 
         "Replacement list used in format_to_cuda function:"
-        self.power_list = power_list
+        self.power_list = model.power_list
         self.power_list.extend(self.f_list)
 
         "List of potential functions and interaction terms:"
-        self.v_l = v_list
-        self.v_int = v_int
+        self.v_l = model.V_list
+        self.v_int = model.V_int
 
         "Form the total potential and interaction functions:"
-        if v_list != None:
+        if self.v_l != None:
             self.V = self.v_l[0]
             for i in xrange(1,len(self.v_l)):
                 self.V += ' + ' + self.v_l[i]
-            if len(v_int)>0:
+            if len(self.v_int)>0:
                 for x in self.v_int:
                     self.V += ' + ' + x
         else:
-            if len(v_int)>0:
+            if len(self.v_int)>0:
                 self.V = self.v_int[0]
                 for i in xrange(1,len(self.v_int)):
                     self.V += ' + ' + self.v_int[i]
             else:
                 self.V = ''
 
-        if len(v_int)>0:
+        if len(self.v_int)>0:
             self.V_int = self.v_int[0]
             for i in xrange(1,len(self.v_int)):
                 self.V_int += ' + ' + self.v_int[i]
@@ -330,23 +331,23 @@ class Potential:
                       "makes PyCOOL a dull boy!"))
 
         "List of different coefficients in potential function:"
-        self.C_list = ['C'+str(i) for i in xrange(1,len(C_coeff)+1)]
-        self.D_list = ['D'+str(i) for i in xrange(1,len(D_coeff)+1)]
+        self.C_list = ['C'+str(i) for i in xrange(1,len(model.C_coeff)+1)]
+        self.D_list = ['D'+str(i) for i in xrange(1,len(model.D_coeff)+1)]
 
-        self.C_coeff = C_coeff
-        self.C_coeffs_np = np.array(C_coeff,dtype = lat.prec_real)
-        self.D_coeff = D_coeff
-        if len(D_coeff) >0:
-            self.D_coeffs_np = np.array(D_coeff,dtype = lat.prec_real)
+        self.C_coeff = model.C_coeff
+        self.C_coeffs_np = np.array(model.C_coeff,dtype = lat.prec_real)
+        self.D_coeff = model.D_coeff
+        if len(model.D_coeff) >0:
+            self.D_coeffs_np = np.array(model.D_coeff,dtype = lat.prec_real)
         else:
             self.D_coeffs_np = np.array([0],dtype = lat.prec_real)
-        self.n_coeffs = len(C_coeff)
+        self.n_coeffs = len(model.C_coeff)
 
         """The following calculations will try to calculate the necessary
            forms needed in the different CUDA kernels:"""
 
         "Potential function V_{i} of field i in CUDA form used in H3 part:"
-        if v_list != None and automatic:
+        if self.v_l != None and automatic:
             self.V_i_H3 = [V_calc(self.v_l[i], n, self.f_list, i+1,
                                   self.power_list, self.C_list, self.D_list,
                                   'H3', deriv_n=0,multiplier='4')
@@ -356,7 +357,7 @@ class Potential:
 
         """Interaction term V_{int} of the fields in CUDA form used in
            the H3 kernel:"""
-        if len(v_int)>0:
+        if len(self.v_int)>0:
             self.V_int_H3 = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'H3', deriv_n=0, multiplier='4')
@@ -370,7 +371,7 @@ class Potential:
 
         """Potential function V_{i} of field i in CUDA form used in rho and
            pressure kernels:"""
-        if v_list != None and automatic:
+        if self.v_l != None and automatic:
             self.V_i_rp = [V_calc(self.v_l[i], n, self.f_list, i+1,
                                   self.power_list, self.C_list, self.D_list,
                                   'rp', deriv_n=0)
@@ -381,7 +382,7 @@ class Potential:
 
         """Interaction term V_{int} of the fields in CUDA form used in
            the rho and pressure kernels:"""
-        if len(v_int)>0:
+        if len(self.v_int)>0:
             self.V_int_rp = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'rp', deriv_n=0)
@@ -395,7 +396,7 @@ class Potential:
                                 self.D_list, 'H3', deriv_n=2)
                          for i in xrange(lat.fields)]
 
-        if v_list != None and automatic:
+        if self.v_l != None and automatic:
             self.V_pd_i = [V_calc(self.v_l[i] , n, self.f_list, i+1,
                                   self.power_list,  self.C_list, self.D_list,
                                   'pd', multiplier = '4')
@@ -403,7 +404,7 @@ class Potential:
         else:
             self.V_pd_i = [None for f in xrange(lat.fields)]
 
-        if len(v_int)>0:
+        if len(self.v_int)>0:
             self.V_pd_int = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'pd', multiplier = '4')
@@ -428,7 +429,7 @@ class Potential:
         """Calculate potential only for the last field since it is the same for
             all fields."""
 
-        if lin_evo:
+        if model.lin_evo:
 
             self.V_back = V_calc_lin(self.V, n, self.f_list, lat.fields,
                                      self.power_list, self.C_list, self.D_list,

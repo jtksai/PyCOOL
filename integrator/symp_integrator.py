@@ -424,24 +424,24 @@ class Simulation:
         - filetype = The used filetype. Either hdf5 or silo.
         """
     
-    def __init__(self, lat, V, t0, a0, rho_r0, rho_m0, f0, pi0,
-                 deSitter=False, steps = 1000000, filetype='silo',
-                 lin_evo = True):
+    def __init__(self, model, lat, V, steps = 1000000, filetype='silo'):
 
         print "-" * 79
 
-        self.t = t0
-        self.t_list = [t0]
-        self.a = a0
-        self.a_list = [a0]
+        self.t = model.t_in
+        self.t_list = [model.t_in]
+        self.a = model.a_in
+        self.a_in = model.a_in
+        self.a_list = [model.a_in]
         self.i0 = 0
         self.i0_list = [0]
 
-        self.rho_r0 = rho_r0
-        self.rho_m0 = rho_m0
-        self.rho = rho_init(V, f0, pi0) + rho_r0 + rho_m0
+        self.rho_r0 = model.rho_r0
+        self.rho_m0 = model.rho_m0
+        self.rho = (rho_init(V, model.fields0, model.pis0) + model.rho_r0
+                    + model.rho_m0)
         self.rho_in = self.rho
-        self.rho_0 = self.rho
+        self.rho_hom = self.rho
         self.H = np.sqrt(lat.mpl**2.*self.rho/3.)
         self.H_in = np.sqrt(lat.mpl**2.*self.rho_in/3.)
 
@@ -454,10 +454,10 @@ class Simulation:
         self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
 
         "Variables and arrays used in homogeneous background calculations:"
-        self.t_hom = t0
-        self.t_list_hom = [t0]
-        self.a_hom = a0
-        self.a_list_hom = [a0]
+        self.t_hom = model.t_in
+        self.t_list_hom = [model.t_in]
+        self.a_hom = model.a_in
+        self.a_list_hom = [model.a_in]
         self.i0_hom = 0
         self.i0_list_hom = [0]
 
@@ -466,9 +466,9 @@ class Simulation:
         self.p_list_hom = [self.p]
 
 
-        self.deSitter = deSitter
+        self.deSitter = model.deSitterQ
 
-        self.lin_evo = lin_evo
+        self.lin_evo = model.lin_evo
 
         self.zeros = np.zeros(lat.dim_lH, dtype = lat.prec_real)
         self.zeros_i = np.zeros(lat.dims_k, dtype = np.int32)
@@ -526,9 +526,11 @@ class Simulation:
         if lat.test:
             print'Testing mode on! Set testQ to False to disable this.\n'
         
-        self.m2_eff = mass_eff(V, lat.field_list, f0, self.H, deSitter)
-        self.fields = [field(lat, V, f0[i], pi0[i], i+1, self.m2_eff[i], a0, 
-                             lat.init_mode, lat.hom_mode)
+        self.m2_eff = mass_eff(V, lat.field_list, model.fields0, self.H,
+                               self.deSitter)
+        self.fields = [field(lat, V, model.fields0[i], model.pis0[i], i+1,
+                             self.m2_eff[i], model.a_in, lat.init_mode,
+                             lat.hom_mode)
                        for i in xrange(lat.fields)]
         "Function to calculate the numerical value of the potential function:"
         self.V = V_func(lat, V)
@@ -616,8 +618,8 @@ class Simulation:
             field.pi0_list.append(field.pi0)
 
     def adjust_p(self, lat):
-        """Use this only after initialization of the fields at t=t0 to include
-           also the energy density of the perturbations in p"""
+        """Use this only after initialization of the fields at t=t_in to
+           include also the energy density of the perturbations in p"""
         H = np.sqrt(self.rho/3.)
         self.p = -6*lat.VL_reduced*H*self.a**2.
 
@@ -958,6 +960,75 @@ class Simulation:
 
             f.close()
 
+    def resample_fields(self, lat, a, init_m = 'defrost_cpu'):
+        """Re-sample the initial perturbations of the fields"""
+
+        for field in self.fields:
+            field.sample_field(lat, a, init_m, homogQ = False)
+
+    def reinit(self, model, lat, a, init_m = 'defrost_cpu'):
+        """Re-init the system back to initial values and resample fields.
+           Also reset any list used to store values"""
+
+        self.t = model.t_in
+        self.t_list = [model.t_in]
+        self.a = a
+        self.a_list = [a]
+        self.i0 = 0
+        self.i0_list = [0]
+
+        self.rho = self.rho_in
+
+        self.H = self.H_in
+        self.H_list = [self.H]
+
+        self.p = -6.*lat.VL_reduced*self.H*self.a**2.
+        self.p_list = [self.p]
+
+        self.t_gpu = gpuarray.to_gpu(np.array(self.t, dtype = lat.prec_real))
+        self.a_gpu = gpuarray.to_gpu(np.array(self.a, dtype = lat.prec_real))
+        self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
+
+        for field in self.fields:
+            field.sample_field(lat, a, init_m)
+
+        "Clear different list:"
+        self.omega_rad_list = []
+        self.omega_mat_list = []
+        self.omega_int_list = []
+
+        """This is used when reading data from files to store the read time
+           and scale parameter values:"""
+
+        self.t_read_list = []
+        self.a_read_list = []
+
+        self.lp_list = []
+
+        self.flush_t = []
+        self.flush_a = []
+        self.flush_p = []
+        self.flush_H = []
+        self.flush_rho = []
+        self.flush_pres = []
+
+        self.fried_1 = []
+        self.k_error = []
+
+        self.omega_rad_list = []
+        self.omega_mat_list = []
+        self.omega_int_list = []
+        self.lp_list = []
+
+        for field in self.fields:
+            field.m2_eff_list = []
+            field.rel_num_list = []
+            field.n_cov_list = []
+            field.skew_list = []
+            field.kurt_list = []
+            field.w_list = []
+            field.omega_list = []
+
     def set_non_lin(self):
         """Set the values of a and p equal to the values
            after the linearized evolution:"""
@@ -968,12 +1039,6 @@ class Simulation:
         "Store the values of a and p after the linearized evolution:"
         self.a_lin_end = self.a
         self.p_lin_end = self.p
-
-    def sample_fields(self, lat, init_m = 'cpu'):
-        """Re-sample the initial perturbations of the fields"""
-
-        for field in self.fields:
-            field.sample_field(lat, init_m)
 
 class field:
     """Field class:
@@ -1011,6 +1076,7 @@ class field:
         self.field_var = 'f'+str(field_i)
 
         self.m2_eff = m2_eff
+        self.m2_eff_in = m2_eff
 
         "Initial homogeneous values:"
         self.f0_in = f0
@@ -1164,6 +1230,19 @@ class field:
         self.f_gpu = gpuarray.to_gpu(np.array(tmp))
         self.pi_gpu = gpuarray.to_gpu(np.array(tmp2))
 
+    def sample_field(self, lat, a_in, flag_method, homogQ = True):
+        """Recreate the initial perturbations if needed without
+           the homogeneous values:"""
+        
+        self.f = fi.f_init(lat, self.f0_in, self.field_i, self.m2_eff_in,
+                           flag_method, homogQ)
+        
+        self.pi = fi.fp_init(lat, self.pi0_in, self.field_i, self.m2_eff_in,
+                             a_in, flag_method, homogQ)
+
+        cuda.memcpy_htod(self.f_gpu.gpudata, self.f)
+        cuda.memcpy_htod(self.pi_gpu.gpudata, self.pi)
+
     def set_perturb(self):
         """Set f_lin_0_gpu and pi_lin_0_gpu arrays to zero and
            Set f_lin_1_gpu and pi_lin_1_gpu arrays to one."""
@@ -1172,20 +1251,6 @@ class field:
 
         cuda.memcpy_htod(self.f_lin_1_gpu.gpudata, self.ones)
         cuda.memcpy_htod(self.pi_lin_1_gpu.gpudata, self.ones)
-
-    def sample_field(self, lat, flag_method):
-        """Recreate the initial perturbations if needed without
-           the homogeneous values:"""
-        
-        self.f = fi.f_init(lat, self.f0_in, self.field_i, self.m2_eff,
-                           flag_method, homogQ = False)
-        self.pi = fi.fp_init(lat, self.pi0_in, self.field_i, self.m2_eff,
-                             flag_method, homogQ = False)
-
-        print 'f shape', self.f.shape, self.pi.shape
-
-        cuda.memcpy_htod(self.f_gpu.gpudata, self.f)
-        cuda.memcpy_htod(self.pi_gpu.gpudata, self.pi)
 
 
 
@@ -1414,6 +1479,126 @@ class Evolution:
 
         print "-" * 79
 
+    def calc_rho_pres(self, lat, V, sim, print_Q = True, print_w = False,
+                      flush = True):
+        """Perform energy density and pressure calculations of the homogeneous
+        field variables:"""
+        calc_rho_pres(lat, V, sim,
+                      self.rp_kernels, self.cuda_param_rp, self.rp_arg,
+                      self.sc_kernel, self.cuda_param_sc, self.sc_arg,
+                      print_Q, print_w, flush)
+
+    def calc_rho_pres_back(self, lat, V, sim, print_Q = True, flush = True):
+        "Perform energy density and pressure calculations:"
+        calc_rho_pres_back(lat, V, sim, print_Q, flush)
+
+    def evo_step_2(self, lat, V, sim, dt):
+        "Integrator order = 2"
+        evo_step_2(lat, V, sim, self.H2_kernels, self.H3_kernels,
+                   self.cuda_param_H2, self.cuda_param_H3,
+                   self.cuda_arg, dt)
+        sim.add_to_lists(lat)
+
+    def evo_step_4(self, lat, V, sim, dt):
+        "Integrator order = 4"
+        evo_step_4(lat, V, sim, self.H2_kernels, self.H3_kernels,
+                   self.cuda_param_H2, self.cuda_param_H3,
+                   self.cuda_arg, dt)
+        sim.add_to_lists(lat)
+
+    def evo_step_6(self, lat, V, sim, dt):
+        "Integrator order = 6"
+        evo_step_6(lat, V, sim, self.H2_kernels, self.H3_kernels,
+                   self.cuda_param_H2, self.cuda_param_H3,
+                   self.cuda_arg, dt)
+        sim.add_to_lists(lat)
+
+    def evo_step_bg_2(self, lat, V, sim, dt):
+        "Integrator order = 2 for homogeneous background:"
+        evo_step_hom_2(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_4(self, lat, V, sim, dt):
+        "Integrator order = 4 for homogeneous background:"
+        evo_step_hom_4(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_6(self, lat, V, sim, dt):
+        "Integrator order = 6 for homogeneous background:"
+        evo_step_hom_6(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_8(self, lat, V, sim, dt):
+        "Integrator order = 8 for homogeneous background:"
+        evo_step_hom_8(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def k_to_x_space(self, lat, sim, unperturb = False):
+        """Transform perturbed fields from Fourier space to unperturbed fields
+           in position space:"""
+        for field in sim.fields:
+            field.ifft()
+        if unperturb:
+            for field in sim.fields:
+                field.unperturb_field()
+
+        self.update(lat, sim)
+
+    def lin_evo_step(self, lat, V, sim):
+        lin_step(lat, V, sim, self.lin_evo_kernel, self.lin_e_arg,
+                 self.cuda_param_lin_e)
+
+        "Update values in host memory:" 
+        sim.a = sim.a_gpu.get().item()
+        sim.p = sim.p_gpu.get().item()
+        sim.t = sim.t_gpu.get().item()
+
+        sim.a_list.append(sim.a)
+        sim.p_list.append(sim.p)
+        sim.t_list.append(sim.t)
+        sim.H_list.append(-sim.p/(6*sim.a**2.*lat.VL_reduced))
+
+        for field in sim.fields:
+            field.f0 = field.f0_gpu.get().item()
+            field.pi0 = field.pi0_gpu.get().item()
+
+            field.f0_list.append(field.f0)
+            field.pi0_list.append(field.pi0)
+
+    def print_id(self, array_type):
+        """Print ids of the arrays in different cuda_args. This can be used to
+           verify that the Cuda functions are pointing to correct arrays."""
+        if array_type == 'evo':
+            res = [id(x) for x in self.cuda_arg]
+        elif array_type == 'rp':
+            res = [id(x) for x in self.rp_arg]
+        return res
+
+    def transform(self, lat, sim):
+        """Evolve the linear perturbations of the fields with
+           the solutions of initial value problems f_{i}=1, pi_{i}=0
+           and f_{i}=0, pi_{i}=1:"""
+
+        args = []
+        for field in sim.fields:
+            args.append(field.f_gpu)
+        for field in sim.fields:
+            args.append(field.pi_gpu)
+        for field in sim.fields:
+            args.append(field.f_lin_01_gpu)
+        for field in sim.fields:
+            args.append(field.pi_lin_01_gpu)
+        for field in sim.fields:
+            args.append(field.f_lin_10_gpu)
+        for field in sim.fields:
+            args.append(field.pi_lin_10_gpu)
+        args.append(sim.k2_bin_id)
+
+        params = dict(block=lat.cuda_block_1, grid=lat.cuda_grid,
+                      stream = sim.stream)
+
+        self.lin_evo_kernel.lin_field_evo(*args, **params)
+
     def update(self, lat, sim):
         """Update the argument list to take into account any changes that
            could have changed the memory ids of the numpy arrays in sim.fields.
@@ -1481,114 +1666,6 @@ class Evolution:
 
         self.cuda_param_rp = dict(block=lat.cuda_block_2, grid=lat.cuda_grid)
 
-
-    def print_id(self, array_type):
-        """Print ids of the arrays in different cuda_args. This can be used to
-           verify that the Cuda functions are pointing to correct arrays."""
-        if array_type == 'evo':
-            res = [id(x) for x in self.cuda_arg]
-        elif array_type == 'rp':
-            res = [id(x) for x in self.rp_arg]
-        return res
-
-    def evo_step_2(self, lat, V, sim, dt):
-        "Integrator order = 2"
-        evo_step_2(lat, V, sim, self.H2_kernels, self.H3_kernels,
-                   self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
-        sim.add_to_lists(lat)
-
-    def evo_step_4(self, lat, V, sim, dt):
-        "Integrator order = 4"
-        evo_step_4(lat, V, sim, self.H2_kernels, self.H3_kernels,
-                   self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
-        sim.add_to_lists(lat)
-
-    def evo_step_6(self, lat, V, sim, dt):
-        "Integrator order = 6"
-        evo_step_6(lat, V, sim, self.H2_kernels, self.H3_kernels,
-                   self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
-        sim.add_to_lists(lat)
-
-    def lin_evo_step(self, lat, V, sim):
-        lin_step(lat, V, sim, self.lin_evo_kernel, self.lin_e_arg,
-                 self.cuda_param_lin_e)
-
-        "Update values in host memory:" 
-        sim.a = sim.a_gpu.get().item()
-        sim.p = sim.p_gpu.get().item()
-        sim.t = sim.t_gpu.get().item()
-
-        sim.a_list.append(sim.a)
-        sim.p_list.append(sim.p)
-        sim.t_list.append(sim.t)
-        sim.H_list.append(-sim.p/(6*sim.a**2.*lat.VL_reduced))
-
-        for field in sim.fields:
-            field.f0 = field.f0_gpu.get().item()
-            field.pi0 = field.pi0_gpu.get().item()
-
-            field.f0_list.append(field.f0)
-            field.pi0_list.append(field.pi0)
-
-    def evo_step_bg_2(self, lat, V, sim, dt):
-        "Integrator order = 2 for homogeneous background:"
-        evo_step_hom_2(lat, V, sim, dt)
-        sim.add_to_lists_hom(lat)
-
-    def evo_step_bg_4(self, lat, V, sim, dt):
-        "Integrator order = 4 for homogeneous background:"
-        evo_step_hom_4(lat, V, sim, dt)
-        sim.add_to_lists_hom(lat)
-
-    def evo_step_bg_6(self, lat, V, sim, dt):
-        "Integrator order = 6 for homogeneous background:"
-        evo_step_hom_6(lat, V, sim, dt)
-        sim.add_to_lists_hom(lat)
-
-    def evo_step_bg_8(self, lat, V, sim, dt):
-        "Integrator order = 8 for homogeneous background:"
-        evo_step_hom_8(lat, V, sim, dt)
-        sim.add_to_lists_hom(lat)
-
-    def transform(self, lat, sim):
-        """Evolve the linear perturbations of the fields with
-           the solutions of initial value problems f_{i}=1, pi_{i}=0
-           and f_{i}=0, pi_{i}=1:"""
-
-        args = []
-        for field in sim.fields:
-            args.append(field.f_gpu)
-        for field in sim.fields:
-            args.append(field.pi_gpu)
-        for field in sim.fields:
-            args.append(field.f_lin_01_gpu)
-        for field in sim.fields:
-            args.append(field.pi_lin_01_gpu)
-        for field in sim.fields:
-            args.append(field.f_lin_10_gpu)
-        for field in sim.fields:
-            args.append(field.pi_lin_10_gpu)
-        args.append(sim.k2_bin_id)
-
-        params = dict(block=lat.cuda_block_1, grid=lat.cuda_grid,
-                      stream = sim.stream)
-
-        self.lin_evo_kernel.lin_field_evo(*args, **params)
-
-    def k_to_x_space(self, lat, sim, unperturb = False):
-        """Transform perturbed fields from Fourier space to unperturbed fields
-           in position space:"""
-        for field in sim.fields:
-            field.ifft()
-        if unperturb:
-            for field in sim.fields:
-                field.unperturb_field()
-
-        self.update(lat, sim)
-
     def x_to_k_space(self, lat, sim, perturb = False):
         """Transform unperturbed fields in position space to perturbed fields
            in Fourier space:"""
@@ -1600,19 +1677,6 @@ class Evolution:
             field.fft()
 
         self.update(lat, sim)
-
-    def calc_rho_pres(self, lat, V, sim, print_Q = True, print_w = False,
-                      flush = True):
-        """Perform energy density and pressure calculations of the homogeneous
-        field variables:"""
-        calc_rho_pres(lat, V, sim,
-                      self.rp_kernels, self.cuda_param_rp, self.rp_arg,
-                      self.sc_kernel, self.cuda_param_sc, self.sc_arg,
-                      print_Q, print_w, flush)
-
-    def calc_rho_pres_back(self, lat, V, sim, print_Q = True, flush = True):
-        "Perform energy density and pressure calculations:"
-        calc_rho_pres_back(lat, V, sim, print_Q, flush)
 
 
 ###############################################################################
@@ -1779,9 +1843,9 @@ def calc_rho_pres_back(lat, V, sim, print_Q, flush=True):
     """This function updates the background energy density for
        linear evolution:"""
 
-    a = sim.a
-    p = sim.p
-    i0 = sim.i0
+    a = sim.a_hom
+    p = sim.p_hom
+    i0 = sim.i0_hom
     VL = lat.VL
     rho_r0 = sim.rho_r0
     rho_m0 = sim.rho_m0
@@ -1796,16 +1860,16 @@ def calc_rho_pres_back(lat, V, sim, print_Q, flush=True):
 
     rho0 += rho_m0/a**3.0 + rho_r0/a**4.0
 
-    sim.rho_0 = rho0
+    sim.rho_hom = rho0
 
-    sim.H = (-p/(6*a**2.*lat.VL_reduced))
+    sim.H_hom = (-p/(6*a**2.*lat.VL_reduced))
 
-    Fried_1 = a**2.*((sim.H)**2. -
+    Fried_1 = a**2.*((sim.H_hom)**2. -
                      lat.mpl**2.*(rho0)/3.0)
-    num_error_rel = Fried_1/(a**2.*sim.H**2.)
+    num_error_rel = Fried_1/(a**2.*sim.H_hom**2.)
 
     if print_Q == True:
-        values = [i0, Fried_1, num_error_rel, lat.m*sim.t, sim.a,
+        values = [i0, Fried_1, num_error_rel, lat.m*sim.t_hom, sim.a_hom,
                   p/VL]
         print ('i0 {0} rho-error {1:5} k/(a^2H^2) {2:5} t [1/m] {3:5}'+
                ' a {4:5} p/VL {5:5}').format(*values)

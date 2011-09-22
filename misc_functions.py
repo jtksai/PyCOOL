@@ -423,7 +423,7 @@ def sort_func(string):
 
     return int(i_value)
 
-def make_dir(lat, V, sim, path = None):
+def make_dir(model, lat, V, sim, path = None):
     "Create a new folder for the simulation data:"
     import os
     import datetime
@@ -442,12 +442,22 @@ def make_dir(lat, V, sim, path = None):
     os.makedirs(data_path)
 
     f = open(data_path + '/info.txt','w')
-    f.write(create_info_file(lat, V, sim, time_text))
+    f.write(create_info_file(model, lat, V, sim, time_text))
     f.close()
 
     return data_path
 
-def create_info_file(lat, V, sim, time):
+def make_subdir(sim_number, path = None):
+    "Create a new subfolder for the simulation data:"
+    import os
+
+    data_path = path + '/sim_' + str(sim_number) + '/'
+    os.makedirs(data_path)
+
+    return data_path
+
+
+def create_info_file(model, lat, V, sim, time):
     "Create an info file of the simulation:"
 
     fields0 = [field.f0_list[0] for field in sim.fields]
@@ -463,11 +473,11 @@ def create_info_file(lat, V, sim, time):
 
     text += 'Reduced Planck mass: ' + str(lat.mpl) + '\n\n'
 
-    text += 'Simulation initial time: ' + str(sim.t_list[0]*lat.m) + '/m \n'
+    text += 'Simulation initial time: ' + str(model.t_in*lat.m) + '/m \n'
 
-    #text += 'Simulation final time: ' + str(t_fin*lat.m) + '/m \n'
+    text += 'Simulation final time: ' + str(model.t_fin*lat.m) + '/m \n'
 
-    text += 'Simulation initial scale parameter: ' + str(sim.a_list[0]) + '\n'
+    text += 'Simulation initial scale parameter: ' + str(model.a_in) + '\n'
 
     text += ('Simulation initial radiation density: ' +
              str(sim.rho_r0/lat.m**2) + '*m**2 \n')

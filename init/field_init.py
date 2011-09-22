@@ -241,8 +241,6 @@ def f_init(lat, field0, field_i, m2_eff, flag_method='defrost_cpu', homogQ=True)
     """
 
     "Open and compile Cuda kernels"
-    #context = make_default_context()
-    #f = codecs.open('gpu_3dconv.cu','r',encoding='utf-8')
     f = codecs.open('init/gpu_3dconv.cu','r',encoding='utf-8')
     gpu_3dconv = f.read()
     f.close()
@@ -271,8 +269,6 @@ def f_init(lat, field0, field_i, m2_eff, flag_method='defrost_cpu', homogQ=True)
         f = sample_defrost_cpu2(lat, gpu_conv,-0.25, m2_eff) + c*field0
         print "Field " + repr(field_i)+ " init on cpu done"
 
-    #context.pop()
-
     return np.array(f, dtype = lat.prec_real)
 
 def fp_init(lat, pi0, field_i, m2_eff, a_in,
@@ -282,13 +278,12 @@ def fp_init(lat, pi0, field_i, m2_eff, a_in,
     
     lat = Lattice
     field_n = number of the field
-    falg_gpu = 'cpu' or 'gpu'. If 'gpu' then Fast Fourier Transforms calculated
+    falg_gpu = 'defrost_cpu' or 'defrost_gpu'. If 'gpu' then Fast Fourier Transforms calculated
                on the gpu.
     homoQ = if True add the homogeneous value to the perturbation
     """
 
     "Open and compile Cuda kernels"
-    context = make_default_context()
     f = codecs.open('init/gpu_3dconv.cu','r',encoding='utf-8')
     gpu_3dconv = f.read()
     f.close()
@@ -315,8 +310,9 @@ def fp_init(lat, pi0, field_i, m2_eff, a_in,
     elif flag_method=='defrost_cpu2':
         fp = sample_defrost_cpu2(lat, gpu_conv, 0.25, m2_eff) + c*pi0
         print "Field " + repr(field_i)+ " time derivative init on cpu done"
-
-    context.pop()
+    else:
+        import sys
+        sys.exit(("Init method ill defined!"))
 
     return np.array(fp, dtype = lat.prec_real)*a_in**2.
 

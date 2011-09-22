@@ -420,6 +420,7 @@ class Postprocess:
             f.close()
 
     def calc_post(self, lat, V, sim, data_path, method = 'defrost'):
+        "Calculate all the required spectra in folder 'data_path'"
 
         from misc_functions import files_in_folder
 
@@ -447,4 +448,5 @@ class Postprocess:
             self.flush(lat, sim, filename)
             
             k += 1
+            
 
