@@ -24,12 +24,13 @@ m2f2 = 0.0
 
 "Coupling strength:"
 g2 = 1e-8
-#lamb2 = 5e-11
-lamb2 = (MPl)**(-4.)
+lamb2 = 5e-12
+#lamb2 = 1.0
 
 "Initial values for the fields and the field time derivatives:"
 
-f10 =  2e-4*mpl
+f10 =  2e-3*mpl
+#f10 =  2e-4*mpl
 f20 = 1e-16*mpl
 
 df1_dt0 = 10.**-20.
@@ -46,7 +47,7 @@ q = g2*f10**2/(4*m2f1)
 "List of the potential functions:"
 
 "Potentials functions of the fields:"
-V_list = ["0.5*C1*f1**2 + 0.125*C2*f1**8","0.5*C3*f2**2"]
+V_list = ["0.5*C1*f1**2 + 0.25*C2*f1**4","0.5*C3*f2**2"]
 
 "Interaction terms of the fields:"
 V_int = ["0.5*C4*f1**2*f2**2"]
@@ -67,7 +68,7 @@ rho_r0 = 0.25*lamb*psi**4.
 rho_m0 = 0.
 
 "Time step:"
-dtau_m = 1./(2500*m)
+dtau_m = 1./(5000*m)
 #dtau_m = 1./(1000*m)
 
 "Lattice side length:"
@@ -81,7 +82,7 @@ a_in = 1.
 
 "Initial and final times:"
 t_in = 0.
-t_fin = 250./m
+t_fin = 500./m
 #t_fin = 10./m
 
 "How frequently to save data:"

@@ -79,7 +79,7 @@ a_in = 1.
 
 "Initial and final times:"
 t_in = 0.
-t_fin = 3000./m
+t_fin = 500./m
 
 "How frequently to save data:"
 flush_freq = 256

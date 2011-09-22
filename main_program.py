@@ -76,7 +76,7 @@ Start Simulation
 
 """
 ####################################################################
-# Linearized evolution
+# Linearized evolution (This has not been tested thoroughly!)
 ####################################################################
 """
 
@@ -107,8 +107,24 @@ if lin_evo:
 
 print '\nNon-linear simulation:\n'
 
-evoQ = True
-#evoQ = False
+evo_homQ = True
+#evo_homQ = False
+
+if evo_homQ:
+    while (sim.t_hom<t_fin):
+        #if (sim.i0_hom%(flush_freq)==0):
+            #evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
+            #sim.flush(lat, path = data_path)
+
+        if (sim.i0_hom%(1024)==0):
+            print 't: ', sim.t_hom*m
+
+        sim.i0_hom += 1
+        evo.evo_step_bg_2(lat, V, sim, lat.dtau)
+
+
+#evoQ = True
+evoQ = False
 
 if evoQ:
     while (sim.t<t_fin):
@@ -116,7 +132,8 @@ if evoQ:
             evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
             sim.flush(lat, path = data_path)
 
-            print 'H-hor:', (1./sim.H)/(sim.a*lat.L),
+        #if (sim.i0%(1024)==0):
+        #    print 'H-hor:', (1./sim.H)/(sim.a*lat.L), 't: ', sim.t*m
 
         sim.i0 += 1
         evo.evo_step_2(lat, V, sim, lat.dtau)

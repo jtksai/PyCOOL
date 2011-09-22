@@ -217,7 +217,7 @@ def kernel_lin_evo_gpu_code(lat, V, sim, write_code=True):
 
 def kernel_k2_gpu_code(lat, V, write_code=False):
     """
-    Read kernel template from a file and make compile a sourcemodule.
+    Read kernel template from a file and compile a sourcemodule.
     Different values are read from Lattice Object lat and
     potential Object V."""
 
@@ -453,6 +453,18 @@ class Simulation:
         self.a_gpu = gpuarray.to_gpu(np.array(self.a, dtype = lat.prec_real))
         self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
 
+        "Variables and arrays used in homogeneous background calculations:"
+        self.t_hom = t0
+        self.t_list_hom = [t0]
+        self.a_hom = a0
+        self.a_list_hom = [a0]
+        self.i0_hom = 0
+        self.i0_list_hom = [0]
+
+        self.H_list_hom = [self.H]
+        self.p_hom = -6.*lat.VL_reduced*self.H*self.a_hom**2.
+        self.p_list_hom = [self.p]
+
 
         self.deSitter = deSitter
 
@@ -580,11 +592,24 @@ class Simulation:
         self.filetype = filetype
 
     def add_to_lists(self, lat):
+        "Append variables to list:"
         self.i0_list.append(self.i0)
         self.t_list.append(self.t)
         self.a_list.append(self.a)
         self.p_list.append(self.p)
         self.H_list.append(-self.p/(6*self.a**2.*lat.VL_reduced))
+
+        #for field in self.fields:
+        #    field.f0_list.append(field.f0)
+        #    field.pi0_list.append(field.pi0)
+
+    def add_to_lists_hom(self, lat):
+        "Append homogeneous variables to list:"
+        self.i0_list_hom.append(self.i0_hom)
+        self.t_list_hom.append(self.t_hom)
+        self.a_list_hom.append(self.a_hom)
+        self.p_list_hom.append(self.p_hom)
+        self.H_list_hom.append(-self.p_hom/(6*self.a_hom**2.*lat.VL_reduced))
 
         for field in self.fields:
             field.f0_list.append(field.f0)
@@ -611,6 +636,37 @@ class Simulation:
             cuda.memcpy_htod(field.f_gpu.gpudata, field.f)
             cuda.memcpy_htod(field.pi_gpu.gpudata, field.pi)
             
+    def calc_k2_bins(self, lat):
+        """Return an array of different values of k^2 inside the lattice:"""
+
+        k2n = lat.dx**2.*(self.k2_field.get())
+
+        tmp = np.array(sorted(set(k2n.flatten())),dtype=np.float64)
+        diff_list = np.diff(tmp)
+
+        k2_bins = [tmp[0]]
+        for i in xrange(1,len(diff_list)+1):
+            if abs(diff_list[i-1])>1e-14:
+                k2_bins.append(tmp[i])
+
+        "Used CUDA block size:"
+        block = lat.cuda_lin_block[0]
+
+        new_len = int(np.ceil(len(k2_bins)/float(block))*block)
+
+        """Make k2_bin a multiple of CUDA block size. What this means is
+           that the last of the k2_bins are set to -1 and lead to clearly
+           unphysical solutions and might become infinite. They are
+           not however used when evolving the actual scalar field
+           perturbations andcause no problems."""
+
+        if new_len > len(k2_bins):
+            for i in xrange(new_len-len(k2_bins)):
+                k2_bins.append(-1.)
+
+        self.k2_bins = lat.dx**-2.*np.array(k2_bins, dtype=lat.prec_real)
+        self.k2_bins_gpu = gpuarray.to_gpu(self.k2_bins)
+
         
 
     def flush(self, lat, path = 'data', physical = False,
@@ -824,37 +880,6 @@ class Simulation:
                     i += 1
 
             f.close()
-
-    def calc_k2_bins(self, lat):
-        """Return an array of different values of k^2 inside the lattice:"""
-
-        k2n = lat.dx**2.*(self.k2_field.get())
-
-        tmp = np.array(sorted(set(k2n.flatten())),dtype=np.float64)
-        diff_list = np.diff(tmp)
-
-        k2_bins = [tmp[0]]
-        for i in xrange(1,len(diff_list)+1):
-            if abs(diff_list[i-1])>1e-14:
-                k2_bins.append(tmp[i])
-
-        "Used CUDA block size:"
-        block = lat.cuda_lin_block[0]
-
-        new_len = int(np.ceil(len(k2_bins)/float(block))*block)
-
-        """Make k2_bin a multiple of CUDA block size. What this means is
-           that the last of the k2_bins are set to -1 and lead to clearly
-           unphysical solutions and might become infinite. They are
-           not however used when evolving the actual scalar field
-           perturbations andcause no problems."""
-
-        if new_len > len(k2_bins):
-            for i in xrange(new_len-len(k2_bins)):
-                k2_bins.append(-1.)
-
-        self.k2_bins = lat.dx**-2.*np.array(k2_bins, dtype=lat.prec_real)
-        self.k2_bins_gpu = gpuarray.to_gpu(self.k2_bins)
 
     def read(self, lat, filename):
         "Read data from a hdf5 or a silo file."
@@ -1508,6 +1533,26 @@ class Evolution:
             field.f0_list.append(field.f0)
             field.pi0_list.append(field.pi0)
 
+    def evo_step_bg_2(self, lat, V, sim, dt):
+        "Integrator order = 2 for homogeneous background:"
+        evo_step_hom_2(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_4(self, lat, V, sim, dt):
+        "Integrator order = 4 for homogeneous background:"
+        evo_step_hom_4(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_6(self, lat, V, sim, dt):
+        "Integrator order = 6 for homogeneous background:"
+        evo_step_hom_6(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
+    def evo_step_bg_8(self, lat, V, sim, dt):
+        "Integrator order = 8 for homogeneous background:"
+        evo_step_hom_8(lat, V, sim, dt)
+        sim.add_to_lists_hom(lat)
+
     def transform(self, lat, sim):
         """Evolve the linear perturbations of the fields with
            the solutions of initial value problems f_{i}=1, pi_{i}=0
@@ -1964,10 +2009,124 @@ def evo_step_8(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
 
 
 ###############################################################################
-# Linearized Evolution codes
+# Linearized perturbation and homogeneous background evolution codes
 ###############################################################################
 
 def lin_step(lat, V, sim, lin_evo_kernel, lin_args, cuda_param_lin_evo):
+    "This will evolve both background and perturbations:"
 
     lin_evo_kernel.evo(*lin_args, **cuda_param_lin_evo)
     
+
+def H01_step(lat, sim, dt):
+    """The integrator related to H1 part of the Hamiltonian function of
+       the background variables:"""
+
+    a0 = sim.a_hom
+    p0 = sim.p_hom
+
+    sim.a_hom = a0 - p0/(6.*lat.VL_reduced)*dt
+
+def H02_step(lat, V, sim, dt):
+    """The integrator related to H2 part of the Hamiltonian function of
+       the background and perturbation variables:"""
+
+    a = sim.a_hom
+    p = sim.p_hom
+
+    for field in sim.fields:
+        p += (field.pi0**2/(a**3))*lat.VL_reduced*dt
+        field.f0 += (field.pi0/(a**2))*dt
+
+    p -= sim.rho_m0*dt
+
+    sim.p_hom = p
+
+def H03_step(lat, V, sim, dt):
+    """The integrator related to H3 part of the Hamiltonian function of
+       the background and perturbation variables:"""
+
+    a = sim.a_hom
+    p = sim.p_hom
+
+    f0 = [field.f0 for field in sim.fields]
+    
+    for field in sim.fields:
+        field.pi0 += -a**4*(field.dV(*f0))*dt
+
+    p += -4.0*a**3*lat.VL_reduced*(sim.V(*f0))*dt
+
+    sim.p_hom = p
+
+def evo_step_hom_2(lat, V, sim, dt):
+    "Second-order time evolution step"
+
+    H01_step(lat, sim, dt/2)
+
+    H02_step(lat, V, sim, dt/2)
+
+    H03_step(lat, V, sim, dt)
+
+    H02_step(lat, V, sim, dt/2)
+
+    H01_step(lat, sim, dt/2)
+
+    sim.t_hom += sim.a_hom*dt
+
+def evo_step_hom_4(lat, V, sim, dt):
+    "Fourth-order time evolution step"
+    k = 4.
+    l = 1.0/(k-1)
+    c1 = 1.0/(2.0 - 2.0**l)
+    c0 = 1.0 - 2.0*c1
+
+    evo_step_hom_2(lat, V, sim, c1*dt)
+    evo_step_hom_2(lat, V, sim, c0*dt)
+    evo_step_hom_2(lat, V, sim, c1*dt)
+
+def evo_step_hom_6(lat, V, sim, dt):
+    """Sixth-order time evolution step.
+       w_i values taken from B. Leimkuhler and S. Reich: Simulating Hamiltonian
+       Dynamics."""
+    w1 = 0.78451361047755726382
+    w2 = 0.23557321335935813368
+    w3 = -1.17767998417887100695
+    w4 = 1 - 2*(w1+w2+w3)
+
+    evo_step_hom_2(lat, V, sim, w1*dt)
+    evo_step_hom_2(lat, V, sim, w2*dt)
+    evo_step_hom_2(lat, V, sim, w3*dt)
+    evo_step_hom_2(lat, V, sim, w4*dt)
+    evo_step_hom_2(lat, V, sim, w3*dt)
+    evo_step_hom_2(lat, V, sim, w2*dt)
+    evo_step_hom_2(lat, V, sim, w1*dt)
+
+def evo_step_hom_8(lat, V, sim, dt):
+    """Eight-order time evolution step.
+       w_i values taken from B. Leimkuhler and S. Reich: Simulating Hamiltonian
+       Dynamics."""
+
+    w1 = 0.74167036435061295345
+    w2 = -0.40910082580003159400
+    w3 = 0.19075471029623837995
+    w4 = -0.57386247111608226666
+    w5 = 0.29906418130365592384
+    w6 = 0.33462491824529818378
+    w7 = 0.31529309239676659663
+    w8 = 1 - 2*(w1+w2+w3+w4+w5+w6+w7)
+
+    evo_step_hom_2(lat, V, sim, w1*dt)
+    evo_step_hom_2(lat, V, sim, w2*dt)
+    evo_step_hom_2(lat, V, sim, w3*dt)
+    evo_step_hom_2(lat, V, sim, w4*dt)
+    evo_step_hom_2(lat, V, sim, w5*dt)
+    evo_step_hom_2(lat, V, sim, w6*dt)
+    evo_step_hom_2(lat, V, sim, w7*dt)
+    evo_step_hom_2(lat, V, sim, w8*dt)
+    evo_step_hom_2(lat, V, sim, w7*dt)
+    evo_step_hom_2(lat, V, sim, w6*dt)
+    evo_step_hom_2(lat, V, sim, w5*dt)
+    evo_step_hom_2(lat, V, sim, w4*dt)
+    evo_step_hom_2(lat, V, sim, w3*dt)
+    evo_step_hom_2(lat, V, sim, w2*dt)
+    evo_step_hom_2(lat, V, sim, w1*dt)

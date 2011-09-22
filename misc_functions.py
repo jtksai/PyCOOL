@@ -465,6 +465,8 @@ def create_info_file(lat, V, sim, time):
 
     text += 'Simulation initial time: ' + str(sim.t_list[0]*lat.m) + '/m \n'
 
+    #text += 'Simulation final time: ' + str(t_fin*lat.m) + '/m \n'
+
     text += 'Simulation initial scale parameter: ' + str(sim.a_list[0]) + '\n'
 
     text += ('Simulation initial radiation density: ' +
@@ -536,8 +538,6 @@ def sim_time(time_sim, per_stp, steps, data_path):
     f.write(sim_time)
     f.write(steps)
     f.close()
-
-
 
 def data_folders(path=None):
     "Give a list of possible data folders:"
