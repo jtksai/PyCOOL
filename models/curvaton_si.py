@@ -21,27 +21,28 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-10
+        self.m = 1e-8
 
         "Scalar field masses:"
         self.m2f1 = self.m**2.
         self.m2f2 = 0.0
 
         "Coupling strength:"
-        self.g2 = 1e-8
-        self.lamb2 = 5e-12
+        self.g2 = 1e-4
+        self.lamb2 = 5e-14
         #self.lamb2 = 1.0
 
         "Initial values for the fields and the field time derivatives:"
 
-        #self.f10 =  2e-3*self.mpl
-        self.f10 =  2e-4*self.mpl
+        self.f10 =  2e-3*self.mpl
+        #self.f10 =  2e-4*self.mpl
         self.f20 = 1e-16*self.mpl
 
         self.df1_dt0 = 10.**-20.
         self.df2_dt0 = 10.**-20.
 
-        self.lamb = 1.0e-20
+        "Radiation field:"
+        self.lamb = 1.0e-16
         self.psi = np.sqrt(self.mpl)
 
         self.fields0 = [self.f10, self.f20]
@@ -74,35 +75,42 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(2500*self.m)
+        self.dtau = 1./(5000*self.m)
         #self.dtau = 1./(1000*m)
+
+        self.dtau_hom = 1./(10000*self.m)
+        #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
         self.L = 5./3./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 32
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 300./self.m
+        self.t_fin = 200./self.m
         #self.t_fin = 10./m
 
         "How frequently to save data:"
-        self.flush_freq = 256*40
-        self.flush_freq_hom = 128*100
+        self.flush_freq = 256*2#*120
+        self.flush_freq_hom = 128*8
 
         "Set if to use linearized evolution:"
-        self.lin_evo = False
+        #self.lin_evo = False
+        self.lin_evo = True
+
 
         "If spectQ = True calculate spectrums at the end:"
-        self.spectQ = False
+        #self.spectQ = False
+        self.spectQ = True
 
         "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = False
+        #self.distQ = False
+        self.distQ = True
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
@@ -110,25 +118,31 @@ class Model:
         self.spect_m = 'defrost'#'latticeeasy'
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
-        self.statsQ = False
+        #self.statsQ = False
+        self.statsQ = True
 
         """If field_r = True calculate also energy densities of fields
            without interaction terms:"""
+        #self.field_rho = False
         self.field_rho = True
 
         """If field_lpQ = True calculate correlation lengths of
            the energy densities of the fields without interaction terms:"""
         self.field_lpQ = False
+        #self.field_lpQ = True
 
         "If deSitter = True include -9H^2/(4m^2) terms in \omega_k^2 term:"
+        #self.deSitterQ = False
         self.deSitterQ = True
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
         self.testQ = False
+        #self.testQ = True
 
         "If m2_effQ = True writes a*m_eff/m to SILO file."
-        self.m2_effQ = False#True
+        #self.m2_effQ = False
+        self.m2_effQ = True
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
@@ -138,7 +152,21 @@ class Model:
         "Non-gaussianity related variables:"
         
         "Whether to do non-Gaussianity calculations:"
-        self.nonGaussianityQ = True
+        self.nonGaussianityQ = False
+        #self.nonGaussianityQ = True
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 2
-        
+
+        "For non-Gaussianty studies disable post-processing by default:"
+        if self.nonGaussianityQ == True:
+            self.lin_evo = False
+            self.spectQ = False
+            self.distQ = False
+            self.statsQ = False
+            self.field_rho = False
+            self.field_lpQ = False
+            self.testQ = False
+            self.m2_effQ = False
+            self.flush_freq = 256*120
+            self.flush_freq_hom = 128*8
+

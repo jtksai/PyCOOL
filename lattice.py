@@ -117,7 +117,7 @@ class Lattice:
 
         self.scale = scale
 
-        self.m2_eff = model.m2_effQ
+        self.m2_eff = True if model.m2_effQ and model.spectQ else False
 
         self.field_lp = model.field_lpQ
 
@@ -167,6 +167,11 @@ class Lattice:
             self.dtau = model.dtau
         else:
             self.dtau = self.dx/self.alpha
+
+        if model.dtau_hom != None:
+            self.dtau_hom = model.dtau_hom
+        else:
+            self.dtau_hom = self.dx/self.alpha
 
         #"Test Courant Condition:"
         #if self.dx/self.dtau < self.alpha:
@@ -436,14 +441,14 @@ class Potential:
                                      self.C_coeff, self.D_coeff,
                                      deriv_n=0)
 
-            self.dV_back = [V_calc_lin(self.V, n, self.f_list, lat.fields,
+            self.dV_back = [V_calc_lin(self.V, n, self.f_list, i+1,
                                        self.power_list,
                                        self.C_list, self.D_list,
                                        self.C_coeff, self.D_coeff,
                                        deriv_n=1)
                             for i in xrange(lat.fields)]
 
-            self.d2V_back = [V_calc_lin(self.V, n, self.f_list, lat.fields,
+            self.d2V_back = [V_calc_lin(self.V, n, self.f_list, i+1,
                                        self.power_list,
                                        self.C_list, self.D_list,
                                         self.C_coeff, self.D_coeff,

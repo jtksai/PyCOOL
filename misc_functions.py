@@ -178,7 +178,7 @@ def V_calc_lin(V_string, n, field_list, field_i, power_list,
 
     tmp = ((m*diff(V, field_list[field_i-1], deriv_n)).expand()).evalf()
 
-    "Replace C_is and D_is with the appropiate numerical values:"
+    "Replace C_i's and D_i's with the appropiate numerical values:"
     r_V_back = {}
     for i in xrange(n_coeffs):
         r_V_back.update({'C'+str(i+1):C_vals[i]})
@@ -214,7 +214,7 @@ def V_calc_lin(V_string, n, field_list, field_i, power_list,
         tmp2 = format_to_cuda(str(tmp), power_list, C_list, D_list, n)
         res = replace_all(tmp2,f_repl)
 
-    print 'res', res
+    #print 'res', res
 
     return res
 
@@ -378,7 +378,7 @@ def dV_func(lat, V, field_var):
         rep_list.update({'C'+str(i+1):C_coeff[i]})
     for i in xrange(len(D_coeff)):
         rep_list.update({'D'+str(i+1):D_coeff[i]})
-    
+
     dV_func = lambdify(field_list,dV.subs(rep_list))
 
     return dV_func

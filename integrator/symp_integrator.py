@@ -802,10 +802,12 @@ class Simulation:
             rho_val = np.asarray(self.flush_rho,dtype=np.float64)
             pres_val = np.asarray(self.flush_pres,dtype=np.float64)
 
-            "Matter fraction:"
-            r_val = 1.0 - 3.0*(pres_val/rho_val)
+            "Comoving horizon:"
+            hor_val = 1.0/(a_val*H_val)*lat.m
 
-            rho_inv = 1.0/rho_val
+            #"Matter fraction:"
+            #r_val = 1.0 - 3.0*(pres_val/rho_val)
+            #rho_inv = 1.0/rho_val
 
             omega_r_val = np.asarray(self.omega_rad_list,dtype=np.float64)
             omega_m_val = np.asarray(self.omega_mat_list,dtype=np.float64)
@@ -823,10 +825,11 @@ class Simulation:
             f.put_curve('a',t_val,a_val,optlist=options2)
             f.put_curve('p',t_val,p_val,optlist=options2)
             f.put_curve('H',t_val,H_val,optlist=options2)
+            f.put_curve('horizon',t_val,hor_val,optlist=options2)
             f.put_curve('rho_ave',t_val,rho_val,optlist=options2)
             f.put_curve('pres_ave',t_val,pres_val,optlist=options2)
-            f.put_curve('matterfrac',t_val,r_val,optlist=options2)
-            f.put_curve('matterfrac2',rho_inv,r_val,optlist=options2)
+            #f.put_curve('matterfrac',t_val,r_val,optlist=options2)
+            #f.put_curve('rhoinv',rho_inv,r_val,optlist=options2)
             f.put_curve('matscaledH',t_val, evo_val,optlist=options2)
             f.put_curve('radscaledH',t_val, evo2_val,optlist=options2)
             f.put_curve('lp',t_val, lp_val,optlist=options2)
@@ -1252,8 +1255,6 @@ class field:
         cuda.memcpy_htod(self.f_lin_1_gpu.gpudata, self.ones)
         cuda.memcpy_htod(self.pi_lin_1_gpu.gpudata, self.ones)
 
-
-
 class H2_Kernel:
     "Used to evolve the field variables"
     def __init__(self, lat, k, write_code=False):
@@ -1266,7 +1267,6 @@ class H2_Kernel:
         cuda.memcpy_htod_async(self.hc_add[0],x, stream=None)
     def read_h(self,x):
         cuda.memcpy_dtoh(x,self.hc_add[0])
-
 
 class H3_Kernel:
     "Used to evolve the canonical momentums of the fields"
@@ -1445,7 +1445,7 @@ class Evolution:
             self.lin_e_arg.append(sim.a_gpu)
             self.lin_e_arg.append(sim.p_gpu)
             self.lin_e_arg.append(sim.t_gpu)
-            self.lin_e_arg.append(np.float64(lat.dtau))
+            self.lin_e_arg.append(np.float64(lat.dtau_hom))
             self.lin_e_arg.append(np.int32(sim.steps))
             self.lin_e_arg.append(sim.k2_bins_gpu)
 
@@ -1491,6 +1491,10 @@ class Evolution:
     def calc_rho_pres_back(self, lat, V, sim, print_Q = True, flush = True):
         "Perform energy density and pressure calculations:"
         calc_rho_pres_back(lat, V, sim, print_Q, flush)
+
+    def calc_rho_pres_hom(self, lat, V, sim, print_Q = True, flush = True):
+        "Perform homogeneous energy density and pressure calculations:"
+        calc_rho_pres_hom(lat, V, sim, print_Q, flush)
 
     def evo_step_2(self, lat, V, sim, dt):
         "Integrator order = 2"
@@ -1639,7 +1643,7 @@ class Evolution:
             self.lin_e_arg.append(sim.a_gpu)
             self.lin_e_arg.append(sim.p_gpu)
             self.lin_e_arg.append(sim.t_gpu)
-            self.lin_e_arg.append(np.float64(lat.dtau))
+            self.lin_e_arg.append(np.float64(lat.dtau_hom))
             self.lin_e_arg.append(np.int32(sim.steps))
             self.lin_e_arg.append(sim.k2_bins_gpu)
 
@@ -1651,7 +1655,7 @@ class Evolution:
 
         "Cuda function arguments used in rho and pressure kernels:"
         self.rp_arg = [sim.rho_gpu, sim.pres_gpu, sim.rhosum_gpu,
-                       sim.inter_sum_gpu]
+                       sim.pressum_gpu, sim.inter_sum_gpu]
         for f in sim.fields:
             self.rp_arg.append(f.f_gpu)
         for f in sim.fields:
@@ -1665,6 +1669,7 @@ class Evolution:
                 self.rp_arg.append(f.rho_gpu)
 
         self.cuda_param_rp = dict(block=lat.cuda_block_2, grid=lat.cuda_grid)
+
 
     def x_to_k_space(self, lat, sim, perturb = False):
         """Transform unperturbed fields in position space to perturbed fields
@@ -1744,7 +1749,7 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     "Energy density fraction of interaction terms:"
     omega_int = rho_inter/rho_tot
     
-    Fried_1 = a**2.*((sim.H)**2.- lat.mpl**2.*rho_tot/3.0)
+    Fried_1 = a**2.*((sim.H)**2.- lat.mpl**2.*rho_tot/3.0)    
     num_error_rel = Fried_1/(a**2.*sim.H**2.)
 
 
@@ -1842,6 +1847,41 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
 def calc_rho_pres_back(lat, V, sim, print_Q, flush=True):
     """This function updates the background energy density for
        linear evolution:"""
+
+    a = sim.a
+    p = sim.p
+    i0 = sim.i0
+    VL = lat.VL
+    rho_r0 = sim.rho_r0
+    rho_m0 = sim.rho_m0
+
+    rho0 = 0
+    for field in sim.fields:
+        rho0 += 0.5*(field.pi0)**2./(a**6.)
+
+    f0 = [field.f0 for field in sim.fields]
+    
+    rho0 += sim.V(*f0)
+
+    rho0 += rho_m0/a**3.0 + rho_r0/a**4.0
+
+    sim.rho = rho0
+
+    sim.H = (-p/(6*a**2.*lat.VL_reduced))
+
+    Fried_1 = a**2.*((sim.H)**2. -
+                     lat.mpl**2.*(rho0)/3.0)
+    num_error_rel = Fried_1/(a**2.*sim.H**2.)
+
+    if print_Q == True:
+        values = [i0, Fried_1, num_error_rel, lat.m*sim.t, sim.a,
+                  p/VL]
+        print ('i0 {0} rho-error {1:5} k/(a^2H^2) {2:5} t [1/m] {3:5}'+
+               ' a {4:5} p/VL {5:5}').format(*values)
+
+def calc_rho_pres_hom(lat, V, sim, print_Q, flush=True):
+    """This function updates the background energy density for
+       homogeneous fields:"""
 
     a = sim.a_hom
     p = sim.p_hom
@@ -2093,13 +2133,13 @@ def H01_step(lat, sim, dt):
 
 def H02_step(lat, V, sim, dt):
     """The integrator related to H2 part of the Hamiltonian function of
-       the background and perturbation variables:"""
+       the background variables:"""
 
     a = sim.a_hom
     p = sim.p_hom
 
     for field in sim.fields:
-        p += (field.pi0**2/(a**3))*lat.VL_reduced*dt
+        p += (field.pi0**2/(a**3))*lat.VL*dt
         field.f0 += (field.pi0/(a**2))*dt
 
     p -= sim.rho_m0*dt
@@ -2108,7 +2148,7 @@ def H02_step(lat, V, sim, dt):
 
 def H03_step(lat, V, sim, dt):
     """The integrator related to H3 part of the Hamiltonian function of
-       the background and perturbation variables:"""
+       the background variables:"""
 
     a = sim.a_hom
     p = sim.p_hom
@@ -2118,9 +2158,11 @@ def H03_step(lat, V, sim, dt):
     for field in sim.fields:
         field.pi0 += -a**4*(field.dV(*f0))*dt
 
-    p += -4.0*a**3*lat.VL_reduced*(sim.V(*f0))*dt
+    p += -4.0*a**3*lat.VL*(sim.V(*f0))*dt
 
     sim.p_hom = p
+
+    sim.t_hom += sim.a_hom*dt
 
 def evo_step_hom_2(lat, V, sim, dt):
     "Second-order time evolution step"
@@ -2134,8 +2176,6 @@ def evo_step_hom_2(lat, V, sim, dt):
     H02_step(lat, V, sim, dt/2)
 
     H01_step(lat, sim, dt/2)
-
-    sim.t_hom += sim.a_hom*dt
 
 def evo_step_hom_4(lat, V, sim, dt):
     "Fourth-order time evolution step"

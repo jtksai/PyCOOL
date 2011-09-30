@@ -21,16 +21,14 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-10
+        self.m = 1e-8
 
         "Scalar field masses:"
         self.m2f1 = self.m**2.
         self.m2f2 = 0.0
 
         "Coupling strength:"
-        self.g2 = 1e-8
-        self.lamb2 = 5e-12
-        #self.lamb2 = 1.0
+        self.g2 = 1e-4
 
         "Initial values for the fields and the field time derivatives:"
 
@@ -41,7 +39,8 @@ class Model:
         self.df1_dt0 = 10.**-20.
         self.df2_dt0 = 10.**-20.
 
-        self.lamb = 1.0e-20
+        "Radiation field:"
+        self.lamb = 1.0e-16
         self.psi = np.sqrt(self.mpl)
 
         self.fields0 = [self.f10, self.f20]
@@ -77,25 +76,30 @@ class Model:
         self.dtau = 1./(5000*self.m)
         #self.dtau = 1./(1000*m)
 
+        self.dtau_hom = 1./(10000*self.m)
+        #self.dtau_hom = 1./(1000*m)
+
         "Lattice side length:"
         self.L = 5./3./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 32
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 500./self.m
+        self.t_fin = 200./self.m
         #self.t_fin = 10./m
 
         "How frequently to save data:"
-        self.flush_freq = 128
+        self.flush_freq = 256*2
+        self.flush_freq_hom = 128*8
 
         "Set if to use linearized evolution:"
-        self.lin_evo = False
+        self.lin_evo = True
+
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True
@@ -137,8 +141,21 @@ class Model:
         "Non-gaussianity related variables:"
         
         "Whether to do non-Gaussianity calculations:"
-        self.nonGaussianityQ = True
+        self.nonGaussianityQ = False
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 2
         
+        "For non-Gaussianty studies disable post-processing by default:"
+        if self.nonGaussianityQ == True:
+            self.lin_evo = False
+            self.spectQ = False
+            self.distQ = False
+            self.statsQ = False
+            self.field_rho = False
+            self.field_lpQ = False
+            self.testQ = False
+            self.m2_effQ = False
+            self.flush_freq = 256*120
+            self.flush_freq_hom = 128*8
+
 

@@ -18,8 +18,8 @@ from lattice import *
 "Necessary constants defined in the model file:"
 
 #from models.chaotic import *
-#from models.curvaton import *
-from models.curvaton_si import *
+from models.curvaton import *
+#from models.curvaton_si import *
 #from models.oscillon import *
 #from models.q_ball import *
 
@@ -76,6 +76,8 @@ Start Simulation
 """
 
 if model.lin_evo:
+    print '\nLinearized simulations:\n'
+
     "Save initial data:"
     evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
     sim.flush(lat, path = data_path)
@@ -84,8 +86,7 @@ if model.lin_evo:
     evo.x_to_k_space(lat, sim, perturb=True)
     evo.update(lat, sim)
 
-
-    while sim.a<2.0:
+    while sim.a < 2.0:
         evo.lin_evo_step(lat, V, sim)
         evo.transform(lat, sim)
         evo.calc_rho_pres_back(lat, V, sim, print_Q = True)
@@ -101,13 +102,11 @@ if model.lin_evo:
 """
 
 print '\nNon-linear simulation:\n'
+    
+if model.nonGaussianityQ:
+    print "\nRunning non-Gaussianity simulations:"
 
-
-#evo_homQ = True
-evo_homQ = False
-
-if evo_homQ:
-    print '\nSolve homogeneous equations:\n'
+    print '\nSolving homogeneous equations first:\n'
 
     while (sim.t_hom<model.t_fin):
         if (sim.i0_hom%(model.flush_freq_hom)==0):
@@ -118,18 +117,21 @@ if evo_homQ:
         #    print 't: ', sim.t_hom*model.m
 
         sim.i0_hom += 1
-        evo.evo_step_bg_4(lat, V, sim, lat.dtau)
+        evo.evo_step_bg_4(lat, V, sim, lat.dtau_hom)
 
+    x_hom = -np.log(np.array(sim.H_list_hom))
+    y_hom = np.log(np.array(sim.a_list_hom))
 
-if model.nonGaussianityQ:
-    print "Running non-Gaussianity simulations:"
 
     start.record()
 
     i0_sum = 0
 
+    a_list = []
+    H_list = []
+
     for i in xrange(model.sim_num):
-        print 'Simulation run: ', i
+        print '\nSimulation run: ', i
 
         data_folder = make_subdir(i, path = data_path)
 
@@ -146,6 +148,10 @@ if model.nonGaussianityQ:
 
         i0_sum += sim.i0
 
+        H_list.append(-np.log(np.array(sim.H_list)))
+        a_list.append(np.log(np.array(sim.a_list)))
+
+
         "Calculate spectrums and statistics:"
         if lat.postQ:
             postp.calc_post(lat, V, sim, data_folder, model.spect_m)
@@ -158,6 +164,10 @@ if model.nonGaussianityQ:
                               flush=False)
             sim.adjust_p(lat)
 
+    zeta_list = []
+    "Use interpolation to calculate ln(a) at H = H_homogeneous values:"
+    for i in xrange(len(a_list)):
+        zeta_list.append(np.interp(x_hom,H_list[i],a_list[i])-y_hom)
 
 
     "Synchronize:"
@@ -168,16 +178,14 @@ if model.nonGaussianityQ:
     per_stp = time_sim/i0_sum
             
 
-
-
-#evoQ = True
-evoQ = False
-
+if model.nonGaussianityQ == True:
+    evoQ = False
+else:
+    evoQ = True
 
 if evoQ:
 
     start.record()
-
     while (sim.t<model.t_fin):
         if (sim.i0%(model.flush_freq)==0):
             evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
@@ -189,19 +197,19 @@ if evoQ:
         sim.i0 += 1
         evo.evo_step_2(lat, V, sim, lat.dtau)
 
-    end.record()
-    end.synchronize()
-
     evo.calc_rho_pres(lat, V, sim, print_Q = True)
     sim.flush(lat, path = data_path, save_evo = False)
-
-    time_sim = end.time_since(start)*1e-3
-    per_stp = time_sim/sim.i0
 
     "Calculate spectrums and statistics:"
     
     if lat.postQ:
         postp.calc_post(lat, V, sim, data_path, model.spect_m)
+
+    end.record()
+    end.synchronize()
+
+    time_sim = end.time_since(start)*1e-3
+    per_stp = time_sim/sim.i0
 
     write_csv(data_path)
 
