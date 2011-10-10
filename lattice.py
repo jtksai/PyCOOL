@@ -117,6 +117,8 @@ class Lattice:
 
         self.scale = scale
 
+        self.fieldsQ = model.fieldsQ
+
         self.m2_eff = True if model.m2_effQ and model.spectQ else False
 
         self.field_lp = model.field_lpQ

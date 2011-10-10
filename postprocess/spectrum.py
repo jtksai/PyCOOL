@@ -169,16 +169,16 @@ class Postprocess:
         a = sim.a
         p = sim.p
 
-        a_term = 1./a**3.
-        p_term = (3./2.)*(-p/(6.*lat.VL_reduced))/a**2.
-        coeff = a**3.*lat.dx**6./(2.*lat.L**3)
+        #a_term = 1./a**3.
+        #p_term = (3./2.)*(-p/(6.*lat.VL_reduced))/a**2.
+        #coeff = a**3.*lat.dx**6./(2.*lat.L**3)
 
         #a_term = 1./a**2.
         #p_term = 0.
 
-        #a_term = 1./a**2.
-        #p_term = (-p/(6.*lat.VL_reduced))/a
-        #coeff = a**2.*lat.dx**6./(2.*lat.L**3)
+        a_term = 1./a**2.
+        p_term = (-p/(6.*lat.VL_reduced))/a
+        coeff = a**2.*lat.dx**6./(2.*lat.L**3)
 
         self.calc_pd(lat, V, sim)
 
@@ -267,7 +267,8 @@ class Postprocess:
 
 
     def calc_dist(self, lat, sim):
-        """Calculate empirical CDF and PDF functions from energy denisties:"""
+        """Calculate empirical CDF and PDF functions from energy densities.
+           NOte that this has not been tested thoroughly:"""
 
         import scikits.statsmodels.tools.tools as tools
 
@@ -302,10 +303,13 @@ class Postprocess:
     def calc_stats(self, lat, sim):
         """Calculate different statistical variables:"""
 
+        import numpy as np
         import scipy.stats as stats
 
         for field in sim.fields:
             data = field.f_gpu.get().flatten()
+            field.mean_list.append(np.mean(data))
+            field.var_list.append(np.var(data))
             field.skew_list.append(stats.skew(data))
             field.kurt_list.append(stats.kurtosis(data))
 
@@ -328,21 +332,24 @@ class Postprocess:
 
             if lat.unit == 'm':
                 c = 1./lat.m
+                c1 = lat.m
             else:
                 c = 1.
+                c1 = 1.0
 
             c2 = 4*np.pi*lat.dk**(-3.)
 
-            t_val = np.asarray(sim.t_read_list,dtype=np.float64)
+            t_val = c1*np.asarray(sim.t_write_list,dtype=np.float64)
 
+            if lat.dist:
 
-            f.put_curve('rho_CDF',
-                        sim.rho_cdf[0],
-                        sim.rho_cdf[1])
+                f.put_curve('rho_CDF',
+                            sim.rho_cdf[0],
+                            sim.rho_cdf[1])
 
-            f.put_curve('rho_PDF',
-                        sim.rho_pdf[0],
-                        sim.rho_pdf[1])
+                f.put_curve('rho_PDF',
+                            sim.rho_pdf[0],
+                            sim.rho_pdf[1])
 
             i = 1
             for field in sim.fields:
@@ -393,7 +400,7 @@ class Postprocess:
                     f.put_curve('field'+str(i)+'_n_cov',
                                 t_val, c**3*n_cov_val)
 
-                if lat.field_rho:
+                if lat.field_rho and lat.dist:
                     f.put_curve('field'+str(i)+'_rho_CDF',
                                 field.rho_cdf[0],
                                 field.rho_cdf[1])
@@ -403,15 +410,23 @@ class Postprocess:
                                 field.rho_pdf[1])
 
                 if lat.stats:
+                    mean_val = np.asarray(field.mean_list,
+                                          dtype=np.float64)
+                    f.put_curve('field'+str(i)+'_mean',
+                                t_val, mean_val)
+                    
+                    var_val = np.asarray(field.var_list,
+                                          dtype=np.float64)
+                    f.put_curve('field'+str(i)+'_var',
+                                t_val, var_val)
+
                     skew_val = np.asarray(field.skew_list,
                                           dtype=np.float64)
-
                     f.put_curve('field'+str(i)+'_skew',
                                 t_val, skew_val)
                     
                     kurt_val = np.asarray(field.kurt_list,
                                           dtype=np.float64)
-
                     f.put_curve('field'+str(i)+'_kurt',
                                 t_val, kurt_val)
 
@@ -419,8 +434,23 @@ class Postprocess:
 
             f.close()
 
+    def process_fields(self, lat, V, sim, filename, method = 'defrost'):
+
+            if lat.spect:
+                self.calc_spectrum(lat, V, sim, method)
+
+            if lat.dist:
+                self.calc_dist(lat, sim)
+
+            if lat.stats:
+                self.calc_stats(lat, sim)
+
+            self.flush(lat, sim, filename)
+        
+
     def calc_post(self, lat, V, sim, data_path, method = 'defrost'):
-        "Calculate all the required spectra in folder 'data_path'"
+        """Calculate all the required spectra, statistiscs etc. in
+           folder 'data_path'"""
 
         from misc_functions import files_in_folder
 

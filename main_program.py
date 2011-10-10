@@ -18,8 +18,8 @@ from lattice import *
 "Necessary constants defined in the model file:"
 
 #from models.chaotic import *
-from models.curvaton import *
-#from models.curvaton_si import *
+#from models.curvaton import *
+from models.curvaton_si import *
 #from models.oscillon import *
 #from models.q_ball import *
 
@@ -61,7 +61,6 @@ show_GPU_mem()
 start = cuda.Event()
 end = cuda.Event()
 
-#start.record()
 
 """
 ################
@@ -71,23 +70,53 @@ Start Simulation
 
 """
 ####################################################################
-# Linearized evolution (This has not been tested thoroughly!)
+# Linearized and background evolution
 ####################################################################
 """
 
+"Solve only background evolution:"
+if model.homogenQ:
+    print '\nSolving homogeneous equations:\n'
+
+    start.record()
+
+    data_folder = make_subdir('homog', data_path)
+
+    while (sim.t_hom<model.t_fin_hom):
+        if (sim.i0_hom%(model.flush_freq_hom)==0):
+            evo.calc_rho_pres_hom(lat, V, sim, print_Q = True)
+            sim.flush_hom(lat, path = data_folder)
+
+        sim.i0_hom += 1
+        evo.evo_step_bg_2(lat, V, sim, lat.dtau_hom/sim.a_hom)
+
+    #write_csv(lat,data_path)
+
+    "Synchronize:"
+    end.record()
+    end.synchronize()
+
+    time_sim = end.time_since(start)*1e-3
+    per_stp = time_sim/sim.i0_hom
+
+
+"""Solve background and linearized perturbations
+   (This has not been tested thoroughly!):"""
 if model.lin_evo:
     print '\nLinearized simulations:\n'
 
     "Save initial data:"
     evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
-    sim.flush(lat, path = data_path)
+    #sim.flush(lat, path = data_path)
 
     "Go to Fourier space:"
     evo.x_to_k_space(lat, sim, perturb=True)
     evo.update(lat, sim)
 
-    while sim.a < 2.0:
+    while sim.a < model.a_limit:
+        "Evolve Fourier coefficients:"
         evo.lin_evo_step(lat, V, sim)
+        "Evolve perturbations:"
         evo.transform(lat, sim)
         evo.calc_rho_pres_back(lat, V, sim, print_Q = True)
 
@@ -102,26 +131,46 @@ if model.lin_evo:
 """
 
 print '\nNon-linear simulation:\n'
-    
+
+"Run one simulation of non-linear evolution:"
+if model.evoQ:
+
+    start.record()
+    while (sim.t<model.t_fin):
+        if (sim.i0%(model.flush_freq)==0):
+            evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
+            data_file = sim.flush(lat, path = data_path)
+
+            "Calculate spectrums and statistics:"
+            if lat.postQ:
+                postp.process_fields(lat, V, sim, data_file)
+
+        sim.i0 += 1
+        "Change this to use different order integrators:"
+        evo.evo_step_2(lat, V, sim, lat.dtau)
+
+    evo.calc_rho_pres(lat, V, sim, print_Q = True)
+    data_file = sim.flush(lat, path = data_path, save_evo = False)
+
+    "Calculate spectrums and statistics:"
+    if lat.postQ:
+        postp.process_fields(lat, V, sim, data_file)
+
+    "Calculate spectrums and statistics:"
+    #if lat.postQ:
+    #    postp.calc_post(lat, V, sim, data_path, model.spect_m)
+
+    end.record()
+    end.synchronize()
+
+    time_sim = end.time_since(start)*1e-3
+    per_stp = time_sim/sim.i0
+
+    write_csv(lat,data_path)
+
+"Run multiple simulations e.g. for non-Gaussianity studies:"    
 if model.nonGaussianityQ:
     print "\nRunning non-Gaussianity simulations:"
-
-    print '\nSolving homogeneous equations first:\n'
-
-    while (sim.t_hom<model.t_fin):
-        if (sim.i0_hom%(model.flush_freq_hom)==0):
-            evo.calc_rho_pres_back(lat, V, sim, print_Q = True)
-            #sim.flush(lat, path = data_path)
-
-        #if (sim.i0_hom%(1024)==0):
-        #    print 't: ', sim.t_hom*model.m
-
-        sim.i0_hom += 1
-        evo.evo_step_bg_4(lat, V, sim, lat.dtau_hom)
-
-    x_hom = -np.log(np.array(sim.H_list_hom))
-    y_hom = np.log(np.array(sim.a_list_hom))
-
 
     start.record()
 
@@ -133,12 +182,16 @@ if model.nonGaussianityQ:
     for i in xrange(model.sim_num):
         print '\nSimulation run: ', i
 
-        data_folder = make_subdir(i, path = data_path)
+        data_folder = make_subdir('non-gauss', data_path, i)
 
         while (sim.t<model.t_fin):
             if (sim.i0%(model.flush_freq)==0):
                 evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
-                sim.flush(lat, path = data_folder)
+                data_file = sim.flush(lat, path = data_folder)
+
+                "Calculate spectrums and statistics:"
+                if lat.postQ:
+                    postp.process_fields(lat, V, sim, data_file)
 
             sim.i0 += 1
             evo.evo_step_2(lat, V, sim, lat.dtau)
@@ -151,10 +204,9 @@ if model.nonGaussianityQ:
         H_list.append(-np.log(np.array(sim.H_list)))
         a_list.append(np.log(np.array(sim.a_list)))
 
-
-        "Calculate spectrums and statistics:"
-        if lat.postQ:
-            postp.calc_post(lat, V, sim, data_folder, model.spect_m)
+        #"Calculate spectrums and statistics:"
+        #if lat.postQ:
+        #    postp.calc_post(lat, V, sim, data_folder, model.spect_m)
 
         "Re-initialize system:"
         if i < model.sim_num-1:
@@ -164,10 +216,10 @@ if model.nonGaussianityQ:
                               flush=False)
             sim.adjust_p(lat)
 
-    zeta_list = []
-    "Use interpolation to calculate ln(a) at H = H_homogeneous values:"
-    for i in xrange(len(a_list)):
-        zeta_list.append(np.interp(x_hom,H_list[i],a_list[i])-y_hom)
+    #zeta_list = []
+    #"Use interpolation to calculate ln(a) at H = H_homogeneous values:"
+    #for i in xrange(len(a_list)):
+    #    zeta_list.append(np.interp(x_hom,H_list[i],a_list[i])-y_hom)
 
 
     "Synchronize:"
@@ -178,42 +230,6 @@ if model.nonGaussianityQ:
     per_stp = time_sim/i0_sum
             
 
-if model.nonGaussianityQ == True:
-    evoQ = False
-else:
-    evoQ = True
-
-if evoQ:
-
-    start.record()
-    while (sim.t<model.t_fin):
-        if (sim.i0%(model.flush_freq)==0):
-            evo.calc_rho_pres(lat, V, sim, print_Q = True, print_w=False)
-            sim.flush(lat, path = data_path)
-
-        #if (sim.i0%(1024)==0):
-        #    print 'H-hor:', (1./sim.H)/(sim.a*lat.L), 't: ', sim.t*m
-
-        sim.i0 += 1
-        evo.evo_step_2(lat, V, sim, lat.dtau)
-
-    evo.calc_rho_pres(lat, V, sim, print_Q = True)
-    sim.flush(lat, path = data_path, save_evo = False)
-
-    "Calculate spectrums and statistics:"
-    
-    if lat.postQ:
-        postp.calc_post(lat, V, sim, data_path, model.spect_m)
-
-    end.record()
-    end.synchronize()
-
-    time_sim = end.time_since(start)*1e-3
-    per_stp = time_sim/sim.i0
-
-    write_csv(data_path)
-
-
 "Print simulation time info:"
 sim_time(time_sim, per_stp, sim.i0, data_path)
 
@@ -222,11 +238,4 @@ sim_time(time_sim, per_stp, sim.i0, data_path)
 Simulation finished
 ####################
 """
-
-"""
-####################################################################
-# Calculate spectrums and statistics
-####################################################################
-"""
-
 print 'Done.'

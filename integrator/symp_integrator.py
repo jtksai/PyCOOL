@@ -510,10 +510,26 @@ class Simulation:
         self.omega_mat_list = []
         self.omega_int_list = []
 
-        """This is used when reading data from files to store the read time
+        "Flush list for a homogeneous solution:"
+        self.flush_t_hom = []
+        self.flush_a_hom = []
+        self.flush_p_hom = []
+        self.flush_H_hom = []
+        
+        self.flush_rho_hom = []
+
+        self.fried_1_hom = []
+        self.k_error_hom = []
+
+        #self.omega_rad_list = []
+        #self.omega_mat_list = []
+
+        """These are used when reading data from files to store the time
            and scale parameter values:"""
         self.t_read_list = []
         self.a_read_list = []
+        self.t_write_list = []
+        self.a_write_list = []
 
         "Correlation length list:"
         self.lp_list = []
@@ -692,6 +708,12 @@ class Simulation:
         else:
             c = 1.
 
+        filename = ''
+
+        self.t_write_list.append(self.t)
+        self.a_write_list.append(self.a)
+
+
         """
         if save_evo:
             import pickle
@@ -739,8 +761,9 @@ class Simulation:
         elif mode == 'silo':
             import pyvisfile.silo as silo
 
-            f = silo.SiloFile(path+'/sim_data_time.'+ str(self.i0) +'.silo',
-                              mode=silo.DB_CLOBBER)
+            filename = path+'/sim_data_time.'+ str(self.i0) +'.silo'
+
+            f = silo.SiloFile(filename,mode=silo.DB_CLOBBER)
 
             coord = [
                 np.linspace(-c*lat.L/2,c*lat.L/2, lat.dimx),
@@ -757,43 +780,47 @@ class Simulation:
             options2={}
             options2[silo.DBOPT_LABEL] = self.i0
 
-            i = 1
-            for field in self.fields:
-
-                f.put_quadvar1('field'+str(i)+'_f', "meshxy",
-                               np.asarray(field.f_gpu.get(), order="F"),
-                               field.f_gpu.get().shape,
-                               centering=silo.DB_NODECENT,
-                               optlist=options)
-                f.put_quadvar1('field'+str(i)+'_pi', "meshxy",
-                               np.asarray(field.pi_gpu.get(), order="F"),
-                               field.f_gpu.get().shape,
-                               centering=silo.DB_NODECENT,
-                               optlist=options)
-                
-                if lat.field_rho:
-                    f.put_quadvar1('field'+str(i)+'_rho', "meshxy",
-                                   np.asarray(field.rho_gpu.get(), order="F"),
-                                   field.f_gpu.get().shape,
-                                   centering=silo.DB_NODECENT,
-                                   optlist=options)
-
-                i += 1
             if lat.scale:
                 c1 = 1.0/lat.m**2.
             else:
                 c1 = 1.0
 
-            f.put_quadvar1('rho', "meshxy",
-                           np.asarray(c1*self.rho_gpu.get(), order="F"),
-                           self.rho_gpu.get().shape,
-                           centering=silo.DB_NODECENT,
-                           optlist=options)
-            f.put_quadvar1('pres', "meshxy",
-                           np.asarray(c1*self.pres_gpu.get(), order="F"),
-                           self.pres_gpu.get().shape,
-                           centering=silo.DB_NODECENT,
-                           optlist=options)
+            i = 1
+
+            if lat.fieldsQ:
+                for field in self.fields:
+
+                    f.put_quadvar1('field'+str(i)+'_f', "meshxy",
+                                   np.asarray(field.f_gpu.get(), order="F"),
+                                   field.f_gpu.get().shape,
+                                   centering=silo.DB_NODECENT,
+                                   optlist=options)
+                    f.put_quadvar1('field'+str(i)+'_pi', "meshxy",
+                                   np.asarray(field.pi_gpu.get(), order="F"),
+                                   field.f_gpu.get().shape,
+                                   centering=silo.DB_NODECENT,
+                                   optlist=options)
+                
+                    if lat.field_rho:
+                        f.put_quadvar1('field'+str(i)+'_rho', "meshxy",
+                                       np.asarray(field.rho_gpu.get(),
+                                                  order="F"),
+                                       field.f_gpu.get().shape,
+                                       centering=silo.DB_NODECENT,
+                                       optlist=options)
+
+                    i += 1
+
+                f.put_quadvar1('rho', "meshxy",
+                               np.asarray(c1*self.rho_gpu.get(), order="F"),
+                               self.rho_gpu.get().shape,
+                               centering=silo.DB_NODECENT,
+                               optlist=options)
+                f.put_quadvar1('pres', "meshxy",
+                               np.asarray(c1*self.pres_gpu.get(), order="F"),
+                               self.pres_gpu.get().shape,
+                               centering=silo.DB_NODECENT,
+                               optlist=options)
 
             t_val = lat.m*np.asarray(self.flush_t,dtype=np.float64)
             a_val = np.asarray(self.flush_a,dtype=np.float64)
@@ -868,6 +895,134 @@ class Simulation:
                 f.put_curve('a_full',t_val,a_val,optlist=options2)
                 f.put_curve('p_full',t_val,p_val,optlist=options2)
                 f.put_curve('H_full',t_val,H_val,optlist=options2)
+
+                i = 1
+                for field in self.fields:
+                    f.put_curve('field'+str(i)+'_f0',
+                                t_val,
+                                np.asarray(field.f0_list,
+                                           dtype=np.float64),
+                                optlist=options2)
+                    f.put_curve('field'+str(i)+'_pi0',
+                                t_val,
+                                np.asarray(field.pi0_list,
+                                           dtype=np.float64),
+                                optlist=options2)
+
+                    i += 1
+
+            f.close()
+
+        return filename
+
+    def flush_hom(self, lat, path = 'data', save_evo = False):
+        """Write homogeneous solution data to a hdf5 or silo file.
+           path = Directory where to save data."""
+
+        import numpy as np
+
+        mode = self.filetype
+
+        "Physically global variables"
+        a = self.a_hom
+        t = self.t_hom
+        p = self.p_hom
+
+        if mode == 'hdf5':
+            import h5py
+    
+            f = h5py.File(path+'/sim_data_time.'+"%.6f" %t+' .hdf5', 'w')
+            #f = h5py.File(path + '/sim_i0_' + str(self.i0) + '.hdf5', 'w')
+
+            f['a'] = np.array(a, lat.prec_real)
+            f['p'] = np.array(p, lat.prec_real)
+            f['t'] = np.array(t, lat.prec_real)
+            f['field_n'] = np.array(len(self.fields), np.int32)
+    
+            i = 1
+            for field in self.fields:
+                subgroup = f.create_group('field'+str(i))
+                dset = subgroup.create_dataset('f0', data=field.f0)
+                dset2 = subgroup.create_dataset('pi0', data=field.pi0)
+                i += 1
+    
+            f.close()
+
+        elif mode == 'silo':
+            import pyvisfile.silo as silo
+
+            f = silo.SiloFile(path+'/sim_data_time.'+ str(self.i0_hom) +'.silo',
+                              mode=silo.DB_CLOBBER)
+
+            options={}
+            options[silo.DBOPT_DTIME] = t
+            options[silo.DBOPT_CYCLE] = self.i0
+
+            options2={}
+            options2[silo.DBOPT_LABEL] = self.i0
+
+            t_val = lat.m*np.asarray(self.flush_t_hom,dtype=np.float64)
+            a_val = np.asarray(self.flush_a_hom,dtype=np.float64)
+            p_val = np.asarray(self.flush_p_hom,dtype=np.float64)
+            H_val = np.asarray(self.flush_H_hom,dtype=np.float64)
+            rho_val = np.asarray(self.flush_rho_hom,dtype=np.float64)
+
+            evo_val = 1.0/(a_val**(1.5)*H_val)*lat.m
+            evo2_val = 1.0/(a_val**(2)*H_val)*lat.m
+
+            "Numerical errors:"
+            e_val = np.abs(np.asarray(self.fried_1_hom,dtype=np.float64))
+            er_val = np.abs(np.asarray(self.k_error_hom,dtype=np.float64))
+
+            "Comoving horizon:"
+            hor_val = 1.0/(a_val*H_val)*lat.m
+
+            #print 'flush test', t_val, a_val
+
+            f.put_curve('a_hom',t_val,a_val,optlist=options2)
+            f.put_curve('p_hom',t_val,p_val,optlist=options2)
+            f.put_curve('H_hom',t_val,H_val,optlist=options2)
+            f.put_curve('horizon_hom',t_val,hor_val,optlist=options2)
+            f.put_curve('rho_ave_hom',t_val,rho_val,optlist=options2)
+            f.put_curve('matscaledH_hom',t_val, evo_val,optlist=options2)
+            f.put_curve('radscaledH_hom',t_val, evo2_val,optlist=options2)
+            f.put_curve('Abs_num_error_hom',t_val,e_val,optlist=options2)
+            f.put_curve('rel_num_error_hom',t_val,er_val,optlist=options2)
+
+            i = 1
+            for field in self.fields:
+                f.put_curve('field'+str(i)+'_f_hom',t_val,
+                            np.asarray(field.f0_flush),
+                            optlist=options2)
+                f.put_curve('field'+str(i)+'_pi_hom',t_val,
+                            np.asarray(field.pi0_flush),
+                            optlist=options2)
+
+
+                "Make a list of the other fields:"
+                other_fields = (list(set(range(0,lat.fields))
+                                     -set([i-1])))
+
+                "Write a*f_j as a function of a*f_i:"
+                for j in other_fields:
+                    f.put_curve('f'+str(i)+'_and_f'+str(j+1),
+                            a_val*np.asarray(field.f0_flush),
+                            a_val*np.asarray(self.fields[j].f0_flush),
+                            optlist=options2)
+
+                i += 1
+
+
+
+            if save_evo:
+                t_val = np.asarray(self.t_list_hom,dtype=np.float64)
+                a_val = np.asarray(self.a_list_hom,dtype=np.float64)
+                p_val = np.asarray(self.p_list_hom,dtype=np.float64)
+                H_val = np.asarray(self.H_list_hom,dtype=np.float64)
+
+                f.put_curve('a_full_hom',t_val,a_val_hom,optlist=options2)
+                f.put_curve('p_full_hom',t_val,p_val_hom,optlist=options2)
+                f.put_curve('H_full_hom',t_val,H_val_hom,optlist=options2)
 
                 i = 1
                 for field in self.fields:
@@ -1000,11 +1155,13 @@ class Simulation:
         self.omega_mat_list = []
         self.omega_int_list = []
 
-        """This is used when reading data from files to store the read time
+        """These are used when reading data from files to store the time
            and scale parameter values:"""
-
         self.t_read_list = []
         self.a_read_list = []
+        self.t_write_list = []
+        self.a_write_list = []
+
 
         self.lp_list = []
 
@@ -1027,6 +1184,8 @@ class Simulation:
             field.m2_eff_list = []
             field.rel_num_list = []
             field.n_cov_list = []
+            field.mean_list = []
+            field.var_list = []
             field.skew_list = []
             field.kurt_list = []
             field.w_list = []
@@ -1107,6 +1266,10 @@ class field:
         self.f0_field[0] = f0
         self.pi0_field[0] = pi0
 
+        "Lists to save f0 and pi0 values:"
+        self.f0_flush = []
+        self.pi0_flush = []
+
         self.f0_gpu = gpuarray.to_gpu(self.f0_field)
         self.pi0_gpu = gpuarray.to_gpu(self.pi0_field)
 
@@ -1186,7 +1349,9 @@ class field:
         """Store the values of comoving number densities of the field."""
         self.n_cov_list = []
 
-        """Store the values of field skewness and kurtosis, respectively:"""
+        """Store the values of field statistisc e.g. skewness and kurtosis:"""
+        self.mean_list = []
+        self.var_list = []
         self.skew_list = []
         self.kurt_list = []
 
@@ -1883,6 +2048,7 @@ def calc_rho_pres_hom(lat, V, sim, print_Q, flush=True):
     """This function updates the background energy density for
        homogeneous fields:"""
 
+    t = sim.t_hom
     a = sim.a_hom
     p = sim.p_hom
     i0 = sim.i0_hom
@@ -1907,6 +2073,27 @@ def calc_rho_pres_hom(lat, V, sim, print_Q, flush=True):
     Fried_1 = a**2.*((sim.H_hom)**2. -
                      lat.mpl**2.*(rho0)/3.0)
     num_error_rel = Fried_1/(a**2.*sim.H_hom**2.)
+
+    if flush:
+
+        "Append the values to flush lists:"
+        sim.flush_t_hom.append(t)
+        sim.flush_a_hom.append(a)
+        sim.flush_p_hom.append(p/VL)
+        sim.flush_H_hom.append(sim.H_hom)
+        
+        sim.flush_rho_hom.append(sim.rho_hom)
+
+        sim.fried_1_hom.append(Fried_1)
+        sim.k_error_hom.append(num_error_rel)
+
+        #sim.omega_rad_list.append(omega_rad)
+        #sim.omega_mat_list.append(omega_mat)
+
+        for field in sim.fields:
+            field.f0_flush.append(field.f0)
+            field.pi0_flush.append(field.pi0)
+
 
     if print_Q == True:
         values = [i0, Fried_1, num_error_rel, lat.m*sim.t_hom, sim.a_hom,
@@ -2113,7 +2300,7 @@ def evo_step_8(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
 
 
 ###############################################################################
-# Linearized perturbation and homogeneous background evolution codes
+# Linearized perturbation and homogeneous system evolution codes
 ###############################################################################
 
 def lin_step(lat, V, sim, lin_evo_kernel, lin_args, cuda_param_lin_evo):

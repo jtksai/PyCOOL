@@ -9,6 +9,8 @@ Please cite arXiv:
 if you use this code in your research.
 See also http://www.physics.utu.fi/theory/particlecosmology/pycool/
 
+Please submit any errors at https://github.com/jtksai/PyCOOL/issues
+
 ------------------------------------------------------
 
 1 Introduction
@@ -126,7 +128,7 @@ In summary, install
   - Scipy
   - SymPy
   - SILO libraries
-  - PyCUDA
+  - PyCUDA (and CUDA)
   - Pyublas
   - Pyvisfile
   - pyfftw
@@ -142,9 +144,17 @@ also in other operating systems.
 
 3 Running
 
-Typing 'python main_program.py' runs the code.
-The current program prints to the screen information of current step number,
-scale factor, canonical momentum p and the accumulated numerical error.
+Typing 'python main_program.py' runs the code for a specific model that is
+imported from the models directory. The current program prints to the screen
+information of current step number, scale factor, canonical momentum p and
+the accumulated numerical error.
+
+The main program is divided into four parts. Thse are:
+ - Homogeneous system solver
+ - Homogeneous + linearized perturbation sovler
+ - Non-linear solver
+ - Non-linear solver for multiple simulations e.g. for non-Gaussianity simulations
+Which of these to use have to be specified in the imported model object.
 
 The program creates a new folder by time stamp in the data folder.
 For large lattices and frequent data saving generated data can be
@@ -160,10 +170,10 @@ In VisIt these are available under Add -> Curve.
 
 4 Running your own models
 
-The code has been tested with various different models.
+The code has been tested with different models.
 
 In order to simulate your own model create a model file in models folder
-and then import this file in main_program.py.
+that has the model object and then import this python file in main_program.py.
 
 Possible variables to change/consider include:
  - n controls the number of points per side of lattice
@@ -180,35 +190,62 @@ Possible variables to change/consider include:
    be studied more carefully to understand why the program fails.
    One cause of errors is exponentiation e.g. terms of the form f**n.
    Currently the program uses format_to_cuda function to write
-   these terms in the form f**n = f*f*···*f.
+   these terms in the form f**n = f*f*···*f. The code is also able to
+   write powers of functions into suitable CUDA form,
+   e.g. Cos(f1)**n = Cos(f1)*Cos(f1)*...*Cos(f1). User has to include
+   the function into a power_list in the used model file.
 
 ------------------------------------------------------
 
-5 Post-processing functions
+5 Output and Post-processing functions
 
-PyCOOL has a number of different post-processing functions.
-These include:
- - field spectrum
- - number density spectrum
- - energy density spectrum
- - effective mass squared of the field(s)
- - comoving number density
- - the fraction of particles in relativistic regime
- - empirical CDF and PDF from energy densities
- - skewness and kurtosis of the scalar field(s)
- - spatial correlation length of the total energy density (See Defrost paper
+PyCOOL writes variety of variables into the Silo files during run time. Which of these and how often
+write are determined in the scalar field model object.
+The variables include:
+ - scale factor a
+ - Hubble parameter H
+ - Comoving horizon 1/(a*H)
+ - field f
+ - canonical momemtum of field pi
+ - energy density rho
+ - fractional energy densities of fields rho_field(n)/rho_total (omega_field(n) in Silo output)
+ - fractional energy density of the interaction term between fields (omega_int in Silo output)
+ - Absolute and relative numerical errors
+ - spatial correlation length of the total energy density (l_p in Silo output) (See Defrost paper
    for a definition.)
 
-Notice that functions these have been tested but not thoroughly.
+When solving homogeneous equations for the fields the program writes
+ - scale factor a
+ - Hubble parameter H
+ - Comoving horizon 1/(a*H)
+ - homogeneous field f
+ - homogeneous canonical momemtum of field pi
+ - energy density rho
+   These are labeled by adding '_hom' at the end of the variable name in Silo output.
+ In addition the program writes
+ - field_i as a function field_j where i and j label the different fields. This can used to see
+   if the (field_i(t),field_j(t)) space is confined to some area.
+
+PyCOOL has also a number of different post-processing functions.
+These include:
+ - field spectrum (S_k in Silo output)
+ - number density spectrum (n_k in Silo output)
+ - energy density spectrum (rho_k in Silo output)
+ - effective mass squared of the field(s) (m2_eff in Silo output)
+ - comoving number density (n_cov in Silo output)
+ - the fraction of particles in relativistic regime (n_rel in Silo output)
+ - empirical CDF and PDF from energy densities (rho_CDF and rho_PDF respectively)
+ - skewness and kurtosis of the scalar field(s) (field(n)_skew and field(n)_kurt in Silo output)
+
+Most of these functions are defined/used in 'Dmitry I. Podolsky et al. : Equation of state and
+Beginning of Thermalization After Preheating' http://arxiv.org/abs/hep-ph/0507096v1 .
+
+N.B. These functions have been tested but not thoroughly. If you notice that the output
+is clearly wrong please submit this to the issues page at github.
 
 ------------------------------------------------------
 
 6 To Do list/Improvements
-
-- Currently the program only calculates spectrums based on the files
-that are written during runtime. This should be updated to
-calculate the spectrums at runtime. This way more spectrums could be
-calculated without using much more disk space.
 
 - Multi-GPU support should be included. This might however take some
 work due to the periodicity of the lattice.

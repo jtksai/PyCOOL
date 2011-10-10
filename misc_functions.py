@@ -320,6 +320,13 @@ def mass_eff(V, field_list, fields0, H0, deSitter=False):
     "Initial value of the potential function:"
     m2eff = [(float(x.subs(rep_list)) - C*9./4.*H0**2.0 ) for x in d2V]
 
+    for mass in m2eff:
+        if mass <0:
+            import sys
+            print 'Mass squared negative i.e. initial H too large.'
+            sys.exit()
+
+
     return m2eff
 
 
@@ -447,13 +454,16 @@ def make_dir(model, lat, V, sim, path = None):
 
     return data_path
 
-def make_subdir(sim_number, path = None):
+def make_subdir(method, path, sim_number=None):
     "Create a new subfolder for the simulation data:"
     import os
 
-    data_path = path + '/sim_' + str(sim_number) + '/'
-    os.makedirs(data_path)
-
+    if method == 'non-gauss':
+        data_path = path + '/sim_' + str(sim_number) + '/'
+        os.makedirs(data_path)
+    elif method == 'homog':
+        data_path = path + '/homog/'
+        os.makedirs(data_path)
     return data_path
 
 
@@ -580,41 +590,45 @@ def files_in_folder(path=None, filetype='silo'):
 
     return files
 
-def write_csv(data_path):
+def write_csv(lat, data_path, source = 'silo'):
     "This reads curves from a silo file and writes the data to a csv file:"
 
     import os
     import pyvisfile.silo as silo
     import csv
 
-    files = files_in_folder(path=data_path, filetype='silo')
+    if source == 'silo':
 
-    os.makedirs(data_path + '/csv')
+        files = files_in_folder(path=data_path, filetype='silo')
 
-    print 'Writing ' + str(len(files)) +  ' cvs files.'
+        os.makedirs(data_path + '/csv')
 
-    i = 0
-    for x in files:
-        f = silo.SiloFile(x, create=False, mode=silo.DB_READ)
-        curves = f.get_toc().curve_names
+        print 'Writing ' + str(len(files)) +  ' cvs files.'
+
+        i = 0
+        for x in files:
+            f = silo.SiloFile(x, create=False, mode=silo.DB_READ)
+            curves = f.get_toc().curve_names
         
-        k_val = f.get_curve('field1'+'_S_k').x
-        t_val = f.get_curve('a').x
+            if lat.spect:
+                k_val = f.get_curve('field1'+'_S_k').x
+            t_val = f.get_curve('a').x
 
-        f_name = data_path + '/csv/' + x.split('.')[-2] + '.csv'
+            f_name = data_path + '/csv/' + x.split('.')[-2] + '.csv'
 
-        csv_file = open(f_name,'w')
-        writer = csv.writer(csv_file)
-        writer.writerow(['t_val','k_val'] + curves)
-        writer.writerow(t_val)
-        writer.writerow(k_val)
-        for curve in curves:
-            writer.writerow(f.get_curve(curve).y)
+            csv_file = open(f_name,'w')
+            writer = csv.writer(csv_file)
+            writer.writerow(['t_val','k_val'] + curves)
+            writer.writerow(t_val)
+            writer.writerow(k_val)
+            for curve in curves:
+                writer.writerow(f.get_curve(curve).y)
         
-        csv_file.close()
-        f.close()
+            csv_file.close()
+            f.close()
 
-        i += 1
+            i += 1
+        
 
 ###############################################################################
 # Misc CUDA functions

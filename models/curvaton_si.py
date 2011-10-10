@@ -21,28 +21,28 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-8
+        self.m = 1e-10
 
         "Scalar field masses:"
         self.m2f1 = self.m**2.
         self.m2f2 = 0.0
 
         "Coupling strength:"
-        self.g2 = 1e-4
-        self.lamb2 = 5e-14
+        self.g2 = 1e-8
+        self.lamb2 = 0.0#5e-10
         #self.lamb2 = 1.0
 
         "Initial values for the fields and the field time derivatives:"
 
-        self.f10 =  2e-3*self.mpl
-        #self.f10 =  2e-4*self.mpl
+        #self.f10 =  2e-3*self.mpl
+        self.f10 =  2e-4*self.mpl
         self.f20 = 1e-16*self.mpl
 
         self.df1_dt0 = 10.**-20.
         self.df2_dt0 = 10.**-20.
 
         "Radiation field:"
-        self.lamb = 1.0e-16
+        self.lamb = 1.0e-20
         self.psi = np.sqrt(self.mpl)
 
         self.fields0 = [self.f10, self.f20]
@@ -75,14 +75,14 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(5000*self.m)
+        self.dtau = 1./(2500*self.m)
         #self.dtau = 1./(1000*m)
 
         self.dtau_hom = 1./(10000*self.m)
         #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
-        self.L = 5./3./self.m
+        self.L = 1./2.*5./3./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -92,25 +92,43 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 200./self.m
+        self.t_fin = 350./self.m
         #self.t_fin = 10./m
+        self.t_fin_hom = 60./self.m
 
         "How frequently to save data:"
-        self.flush_freq = 256*2#*120
+        self.flush_freq = 256#*120
         self.flush_freq_hom = 128*8
 
-        "Set if to use linearized evolution:"
+        "Use linearized evolution if True:"
         #self.lin_evo = False
         self.lin_evo = True
 
+        "Limit for scale factor in linearized evolution:"
+        self.a_limit = 6
+
+        "Solve homogeneous field evolution if True:"
+        self.homogenQ = False
+        #self.homogenQ = True
+
+        "Set True to solve non-linearized evolution:"
+        self.evoQ = False
+        #self.evoQ = True
+
+
+
+        """If fieldsQ = True save the field data (fields, rho etc.) in
+           the Silo files:"""
+        #self.fieldsQ = False
+        self.fieldsQ = True
 
         "If spectQ = True calculate spectrums at the end:"
         #self.spectQ = False
         self.spectQ = True
 
         "If distQ = True calculate empirical CDF and CDF at the end:"
-        #self.distQ = False
-        self.distQ = True
+        self.distQ = False
+        #self.distQ = True
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
