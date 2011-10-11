@@ -54,7 +54,8 @@ class Model:
 
         "Interaction terms of the fields:"
         #self.V_int = ["C1*(log(1+D1*(f1**2+f2**2)))+C2*(f1**2+f2**2)**3"]
-        self.V_int = ["C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))+C4*(f1**2+f2**2)**3"]
+        self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))"+
+                       "+C4*(f1**2+f2**2)**3")]
 
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
@@ -72,6 +73,7 @@ class Model:
         "Initial and final times:"
         self.t_in = 100./self.m
         self.t_fin = 10000./self.m
+        self.t_fin_hom = 10000./self.m
 
         "Initial values for homogeneous radiation and matter components:"
         self.rho_r0 = 3.*(2./(3.*self.t_in))**2.
@@ -81,6 +83,9 @@ class Model:
         self.dtau = 0.005/self.m
         #self.dtau = 1./(1000*m)
 
+        "Time step for homogeneous system:"
+        self.dtau_hom = 1./(2000*self.m)
+
         "Lattice side length:"
         self.L = 16./self.m
 
@@ -88,13 +93,40 @@ class Model:
         self.n = 128
 
         "Initial scale parameter:"
-        self.a_in = 0.1*(t_in*m)**(2./3.)
+        self.a_in = 0.1*(self.t_in*self.m)**(2./3.)
+
+        "Limit for scale factor in linearized evolution:"
+        self.a_limit = 2
 
         "How frequently to save data:"
         self.flush_freq = 4*1024
+        self.flush_freq_hom = 128*8
 
         "Set if to use linearized evolution:"
         self.lin_evo = False
+
+        "Solve homogeneous field evolution if True:"
+        self.homogenQ = False
+
+        "Set True to solve non-linearized evolution:"
+        self.evoQ = True
+
+        """Whether to do non-Gaussianity calculations
+           (this diables post-processing):"""
+        self.nonGaussianityQ = False
+
+        "Number of different simulations to run with identical intial values:"
+        self.sim_num = 1
+
+
+
+        """If True multiplies energy densities with 1/m^2.
+            VisIt might not plot properly very small densities."""
+        self.scale = True
+
+        """If fieldsQ = True save the field data (fields, rho etc.) in
+           the Silo files:"""
+        self.fieldsQ = True
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True
@@ -125,7 +157,8 @@ class Model:
            testing:"""
         self.testQ = False
 
-        "If m2_effQ = True writes a*m_eff/m to SILO file."
+        """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
+           also comoving number density."""
         self.m2_effQ = False
 
         """Maximum number of registers useb per thread. If set to None uses
@@ -135,9 +168,17 @@ class Model:
 
         "Non-gaussianity related variables:"
         
-        "Whether to do non-Gaussianity calculations:"
-        self.nonGaussianityQ = True
-        "Number of different simulations to run with identical intial values:"
-        self.sim_num = 2
+        "For non-Gaussianty studies disable post-processing by default:"
+        if self.nonGaussianityQ == True:
+            self.spectQ = False
+            self.distQ = False
+            self.statsQ = False
+            self.field_rho = False
+            self.field_lpQ = False
+            self.testQ = False
+            self.m2_effQ = False
+            self.flush_freq = 256*120
+            self.flush_freq_hom = 128*8
+
         
 

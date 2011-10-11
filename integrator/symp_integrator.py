@@ -402,7 +402,7 @@ class Simulation:
         - scale parameter a
         - canonical momentum p
         - physical time t
-        - number of steps taken i0
+        - number of steps taken in linearized kernel i0
 
         - initial radiation energy density rho_r0
         - initial matter energy density rho_m0
@@ -676,7 +676,7 @@ class Simulation:
            that the last of the k2_bins are set to -1 and lead to clearly
            unphysical solutions and might become infinite. They are
            not however used when evolving the actual scalar field
-           perturbations andcause no problems."""
+           perturbations and cause no problems."""
 
         if new_len > len(k2_bins):
             for i in xrange(new_len-len(k2_bins)):
@@ -1143,12 +1143,20 @@ class Simulation:
         self.p = -6.*lat.VL_reduced*self.H*self.a**2.
         self.p_list = [self.p]
 
-        self.t_gpu = gpuarray.to_gpu(np.array(self.t, dtype = lat.prec_real))
-        self.a_gpu = gpuarray.to_gpu(np.array(self.a, dtype = lat.prec_real))
-        self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
+        #self.t_gpu = gpuarray.to_gpu(np.array(self.t, dtype = lat.prec_real))
+        #self.a_gpu = gpuarray.to_gpu(np.array(self.a, dtype = lat.prec_real))
+        #self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
 
         for field in self.fields:
             field.sample_field(lat, a, init_m)
+
+        "Reset variables used in linearized evo:"
+        if self.lin_evo:
+            cuda.memcpy_htod(self.a_gpu.gpudata, np.array(a,lat.prec_real))
+            cuda.memcpy_htod(self.p_gpu.gpudata, np.array(self.p,lat.prec_real))
+            cuda.memcpy_htod(self.t_gpu.gpudata,
+                             np.array(model.t_in,lat.prec_real))
+
 
         "Clear different list:"
         self.omega_rad_list = []
@@ -1190,6 +1198,11 @@ class Simulation:
             field.kurt_list = []
             field.w_list = []
             field.omega_list = []
+            if self.lin_evo:
+                field.f0_field[0] = field.f0_in
+                field.pi0_field[0] = field.pi0_in
+                cuda.memcpy_htod(field.f0_gpu.gpudata, field.f0_field)
+                cuda.memcpy_htod(field.pi0_gpu.gpudata, field.pi0_field)
 
     def set_non_lin(self):
         """Set the values of a and p equal to the values
@@ -1273,6 +1286,12 @@ class field:
         self.f0_gpu = gpuarray.to_gpu(self.f0_field)
         self.pi0_gpu = gpuarray.to_gpu(self.pi0_field)
 
+        """These arrays are used in the linearized kernel when solving
+           perturbation equations with intial values (0,1) and (1,0)
+           for f_i^(1) and pi_i^(1) respectively.
+           Note that these are set to zeros and ones
+           automatically in the CUDA kernel before
+           evolving the system:"""
         self.f_lin_01_gpu = gpuarray.to_gpu(self.zeros)
         self.pi_lin_01_gpu = gpuarray.to_gpu(self.zeros)
 
@@ -1711,6 +1730,7 @@ class Evolution:
             for field in sim.fields:
                 field.unperturb_field()
 
+        "Update memory ids:"
         self.update(lat, sim)
 
     def lin_evo_step(self, lat, V, sim):
@@ -1846,6 +1866,7 @@ class Evolution:
         for field in sim.fields:
             field.fft()
 
+        "Update memory ids:"
         self.update(lat, sim)
 
 

@@ -454,16 +454,17 @@ def make_dir(model, lat, V, sim, path = None):
 
     return data_path
 
-def make_subdir(method, path, sim_number=None):
+def make_subdir(path, method= None, sim_number=None):
     "Create a new subfolder for the simulation data:"
     import os
 
-    if method == 'non-gauss':
-        data_path = path + '/sim_' + str(sim_number) + '/'
-        os.makedirs(data_path)
-    elif method == 'homog':
+    if method == 'homog':
         data_path = path + '/homog/'
         os.makedirs(data_path)
+    else:
+        data_path = path + '/sim_' + str(sim_number) + '/'
+        os.makedirs(data_path)
+
     return data_path
 
 
@@ -620,7 +621,8 @@ def write_csv(lat, data_path, source = 'silo'):
             writer = csv.writer(csv_file)
             writer.writerow(['t_val','k_val'] + curves)
             writer.writerow(t_val)
-            writer.writerow(k_val)
+            if lat.spect:
+                writer.writerow(k_val)
             for curve in curves:
                 writer.writerow(f.get_curve(curve).y)
         

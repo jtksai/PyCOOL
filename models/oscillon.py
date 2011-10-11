@@ -65,6 +65,9 @@ class Model:
         "Time step:"
         self.dtau = 0.005/(self.m)
 
+        "Time step for homogeneous system:"
+        self.dtau_hom = 1./(10000*self.m)
+
         "Lattice side length:"
         self.L = 400./self.m
 
@@ -74,15 +77,43 @@ class Model:
         "Initial scale parameter:"
         self.a_in = 1.
 
+        "Limit for scale factor in linearized evolution:"
+        self.a_limit = 2
+
         "Initial and final times:"
         self.t_in = 0.
         self.t_fin = 5000./self.m
 
+        self.t_fin_hom = 5000./self.m
+
         "How frequently to save data:"
         self.flush_freq = 4*1024
+        self.flush_freq_hom = 128*20
 
         "Set if to use linearized evolution:"
         self.lin_evo = False
+
+        "Solve homogeneous field evolution if True:"
+        self.homogenQ = False
+
+        "Set True to solve non-linearized evolution:"
+        self.evoQ = True
+
+        """Whether to do non-Gaussianity calculations
+           (this disables post-processing):"""
+        self.nonGaussianityQ = False
+
+        "Number of different simulations to run with identical intial values:"
+        self.sim_num = 1
+
+
+        """If True multiplies energy densities with 1/m^2.
+            VisIt might not plot properly very small densities."""
+        self.scale = False
+
+        """If fieldsQ = True save the field data (fields, rho etc.) in
+           the Silo files:"""
+        self.fieldsQ = True
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True
@@ -113,19 +144,33 @@ class Model:
            testing:"""
         self.testQ = False
 
-        "If m2_effQ = True writes a*m_eff/m to SILO file."
+        """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
+           also comoving number density."""
         self.m2_effQ = False
+
+        "If csvQ = True writes curves from Silo files to csv files:"
+        self.csvQ = True
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
            Note that this will also affect the used block size"""
         self.max_reg = None
-
+        
         "Non-gaussianity related variables:"
         
         "Whether to do non-Gaussianity calculations:"
-        self.nonGaussianityQ = True
-        "Number of different simulations to run with identical intial values:"
-        self.sim_num = 2
-        
+        self.nonGaussianityQ = False
+
+        "For non-Gaussianty studies disable post-processing by default:"
+        if self.nonGaussianityQ == True:
+            self.spectQ = False
+            self.distQ = False
+            self.statsQ = False
+            self.field_rho = False
+            self.field_lpQ = False
+            self.testQ = False
+            self.m2_effQ = False
+            self.flush_freq = 256*120
+            self.flush_freq_hom = 128*8
+
 

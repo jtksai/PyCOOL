@@ -9,7 +9,12 @@ Please cite arXiv:
 if you use this code in your research.
 See also http://www.physics.utu.fi/theory/particlecosmology/pycool/
 
-Please submit any errors at https://github.com/jtksai/PyCOOL/issues
+I have done my best to add comments and info texts into different
+functions in the Python and CUDA codes in order to make the program
+more understandable. If you still have questions please email me or
+post them at https://github.com/jtksai/PyCOOL/ .
+
+Please submit any errors at https://github.com/jtksai/PyCOOL/issues .
 
 ------------------------------------------------------
 
@@ -146,25 +151,26 @@ also in other operating systems.
 
 Typing 'python main_program.py' runs the code for a specific model that is
 imported from the models directory. The current program prints to the screen
-information of current step number, scale factor, canonical momentum p and
-the accumulated numerical error.
+information of current step number, scale factor, canonical momentum p,
+physical time and numerical error.
 
-The main program is divided into four parts. Thse are:
+The initial field perturbations are created with the method that was
+also used in Defrost.
+
+The main program is divided into
  - Homogeneous system solver
- - Homogeneous + linearized perturbation sovler
- - Non-linear solver
- - Non-linear solver for multiple simulations e.g. for non-Gaussianity simulations
-Which of these to use have to be specified in the imported model object.
+ - Non-linear solver that includes a linearized perturbation solver
 
 The program creates a new folder by time stamp in the data folder.
-For large lattices and frequent data saving generated data can be
-several hundred gigabytes. The folder also includes a simple info file
-that tells basic information about the model used to generate the data.
-These include the initial values and the potential functions.
+For large lattices and frequent data saving the generated data can be
+several hundred gigabytes if the fields are also stores. The folder also
+includes a simple info file that tells basic information about the model
+used to generate the data. These include the initial values and
+the potential functions.
 
-After the simulation is done PyCOOL can calculate spectrums used in
+During the simulation PyCOOL can also calculate various spectrums used in
 LatticeEasy and Defrost that are written into the generated SILO files.
-In VisIt these are available under Add -> Curve.
+In VisIt these are available under Add -> Curve. See section 5 for details.
 
 ------------------------------------------------------
 
@@ -200,26 +206,28 @@ Possible variables to change/consider include:
 5 Output and Post-processing functions
 
 PyCOOL writes variety of variables into the Silo files during run time. Which of these and how often
-write are determined in the scalar field model object.
+to write are determined in the scalar field model object. Note that the different spectra are
+calculated on the CPU and therefore the data must be transferred from the device to the host memory.
+This can significantly hinder the performance of the code.
 The variables include:
  - scale factor a
  - Hubble parameter H
  - Comoving horizon 1/(a*H)
  - field f
- - canonical momemtum of field pi
+ - canonical momentum of field pi
  - energy density rho
  - fractional energy densities of fields rho_field(n)/rho_total (omega_field(n) in Silo output)
  - fractional energy density of the interaction term between fields (omega_int in Silo output)
  - Absolute and relative numerical errors
  - spatial correlation length of the total energy density (l_p in Silo output) (See Defrost paper
-   for a definition.)
+   for the definition.)
 
 When solving homogeneous equations for the fields the program writes
  - scale factor a
  - Hubble parameter H
  - Comoving horizon 1/(a*H)
  - homogeneous field f
- - homogeneous canonical momemtum of field pi
+ - homogeneous canonical momentum of field pi
  - energy density rho
    These are labeled by adding '_hom' at the end of the variable name in Silo output.
  In addition the program writes
@@ -241,7 +249,8 @@ Most of these functions are defined/used in 'Dmitry I. Podolsky et al. : Equatio
 Beginning of Thermalization After Preheating' http://arxiv.org/abs/hep-ph/0507096v1 .
 
 N.B. These functions have been tested but not thoroughly. If you notice that the output
-is clearly wrong please submit this to the issues page at github.
+is clearly wrong please submit this to the issues page at github and/or create
+a functioning fork.
 
 ------------------------------------------------------
 
