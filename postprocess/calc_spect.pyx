@@ -28,7 +28,8 @@ def calc_le(np.ndarray[dtype_t, ndim=3] F_k_Re,
          dtype_t p_term,
          dtype_t coeff):
 
-    """This code is adapted from LatticeEasy."""
+    """This code is adapted from LatticeEasy.
+       Viewer discretion is advised!"""
 
     cdef int i, x, y, z
     cdef int px, py, pz
@@ -103,7 +104,8 @@ def calc_df(np.ndarray[dtype_t, ndim=3] F_k_Re,
          dtype_t p_term,
          dtype_t coeff):
 
-    """This code is partially adapted from Defrost."""
+    """This code is partially adapted from Defrost.
+       Viewer discretion is advised!"""
 
     cdef int i, x, y, z, ns
     cdef int px, py, pz
@@ -168,14 +170,14 @@ def calc_df(np.ndarray[dtype_t, ndim=3] F_k_Re,
 
                 f_total[i] += c0*cnt*Fk_sq
                 counts[i] += c0*cnt
-                n_k[i] += c0*nk
-                rho_k[i] += c0*w_k*nk
+                n_k[i] += c0*cnt*nk
+                rho_k[i] += c0*cnt*w_k*nk
 
                 if i < ns-1:
                     f_total[i+1] += c1*cnt*Fk_sq
                     counts[i+1] += c1*cnt
-                    n_k[i] += c1*nk
-                    rho_k[i] += c1*w_k*nk
+                    n_k[i] += c1*cnt*nk
+                    rho_k[i] += c1*cnt*w_k*nk
 
 
 

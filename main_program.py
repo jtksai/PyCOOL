@@ -1,25 +1,21 @@
-import sys, os
 import pycuda.driver as cuda
-import pycuda.autoinit
-import pycuda.gpuarray as gpuarray
 import numpy as np
-import numpy.linalg as la
 
 import integrator.symp_integrator as si
-import postprocess.spectrum as sp
+import postprocess.procedures as pp
 
 from lattice import *
 
 """
 ###############################################################################
-# Import a scalar field model and define a lattice
+# Import a scalar field model and create the objects needed for simulation
 ###############################################################################
 """
 "Necessary constants defined in the model file:"
 
-from models.chaotic import *
+#from models.chaotic import *
 #from models.curvaton import *
-#from models.curvaton_si import *
+from models.curvaton_si import *
 #from models.oscillon import *
 #from models.q_ball import *
 
@@ -38,14 +34,13 @@ rho_fields = si.rho_field(lat, V, model.a_in, model.pis0, model.fields0)
 sim = si.Simulation(model, lat, V, steps = 10000)
 
 evo = si.Evolution(lat, V, sim)
-postp = sp.Postprocess(lat, V)
+postp = pp.Postprocess(lat, V)
 
 "Create a new folder for the data:"
 data_path = make_dir(model, lat, V, sim)
 
 """Set the average values of the fields equal to
 their homogeneous values:"""
-
 sim.adjust_fields(lat)
 
 """Canonical momentum p calculated with homogeneous fields.

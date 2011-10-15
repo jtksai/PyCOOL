@@ -832,14 +832,21 @@ class Simulation:
             "Comoving horizon:"
             hor_val = 1.0/(a_val*H_val)*lat.m
 
+            "ln(a) as a function ln(1/H):"
+            ln_a_val = np.log(a_val)
+            ln_H_val = -np.log(H_val)
+            
+
             #"Matter fraction:"
             #r_val = 1.0 - 3.0*(pres_val/rho_val)
             #rho_inv = 1.0/rho_val
 
+            "Fractional energy densities:"
             omega_r_val = np.asarray(self.omega_rad_list,dtype=np.float64)
             omega_m_val = np.asarray(self.omega_mat_list,dtype=np.float64)
             omega_int_val = np.asarray(self.omega_int_list,dtype=np.float64)
 
+            "Correlation length:"
             lp_val = np.asarray(self.lp_list,dtype=np.float64)
 
             evo_val = 1.0/(a_val**(1.5)*H_val)*lat.m
@@ -852,17 +859,24 @@ class Simulation:
             f.put_curve('a',t_val,a_val,optlist=options2)
             f.put_curve('p',t_val,p_val,optlist=options2)
             f.put_curve('H',t_val,H_val,optlist=options2)
+
+            f.put_curve('ln_a_vs_ln_H',ln_H_val,ln_a_val,optlist=options2)
+
             f.put_curve('horizon',t_val,hor_val,optlist=options2)
+
             f.put_curve('rho_ave',t_val,rho_val,optlist=options2)
             f.put_curve('pres_ave',t_val,pres_val,optlist=options2)
             #f.put_curve('matterfrac',t_val,r_val,optlist=options2)
             #f.put_curve('rhoinv',rho_inv,r_val,optlist=options2)
             f.put_curve('matscaledH',t_val, evo_val,optlist=options2)
             f.put_curve('radscaledH',t_val, evo2_val,optlist=options2)
+
             f.put_curve('lp',t_val, lp_val,optlist=options2)
+
             f.put_curve('omega_r',t_val,omega_r_val,optlist=options2)
             f.put_curve('omega_m',t_val,omega_m_val,optlist=options2)
             f.put_curve('omega_int',t_val,omega_int_val,optlist=options2)
+
             f.put_curve('Abs_num_error',t_val,e_val,optlist=options2)
             f.put_curve('rel_num_error',t_val,er_val,optlist=options2)
 
@@ -1341,10 +1355,15 @@ class field:
 
         self.w_k = 0
 
+        "Number and energy spectra:"
         self.n_k = np.zeros(lat.ns, dtype = np.float64)
         self.rho_k = np.zeros(lat.ns, dtype = np.float64)
+
+        "Field spectra:"
         self.S = np.zeros(lat.ns, dtype = np.float64)
         #self.Fpk_sq = np.zeros(lat.ns, dtype = np.float64)
+
+        "Number of points in the bin:"
         self.W = np.zeros(lat.ns, dtype = np.int32)
         self.W_df = np.zeros(lat.ns, dtype = np.float64)
         

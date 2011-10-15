@@ -24,22 +24,23 @@ class Model:
         self.m = 1e-10
 
         "Scalar field masses:"
-        self.m2f1 = self.m**2.
+        #self.m2f1 = (3.162293471517152e-09)**2
+        #self.m2f1 = (1.004987562112089e-09)**2
+        self.m2f1 = (5e-10)**2#1e-22#self.m**2.#
         self.m2f2 = 0.0
-
-        "Coupling strengths:"
-        self.g2 = 1e-8
-        self.lamb2 = 0.0#5e-10
-        #self.lamb2 = 1.0
+        self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
 
         "Initial values for the fields and the field time derivatives:"
-
         #self.f10 =  2e-3*self.mpl
         self.f10 =  2e-4*self.mpl
         self.f20 = 1e-16*self.mpl
 
         self.df1_dt0 = 10.**-20.
         self.df2_dt0 = 10.**-20.
+
+        "Coupling strengths:"
+        self.g2 = 1e-8
+        self.lamb2 = 2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#5e-10#
 
         "Radiation field:"
         self.lamb = 1.0e-20
@@ -75,7 +76,7 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(2500*self.m)
+        self.dtau = 1./(5000*self.m)
         #self.dtau = 1./(1000*m)
 
         "Time step for homogeneous system:"
@@ -92,54 +93,48 @@ class Model:
         self.a_in = 1.
 
         "Limit for scale factor in linearized evolution:"
-        self.a_limit = 7
+        self.a_limit = 5
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 350./self.m
+        self.t_fin = 50./self.m
         #self.t_fin = 10./m
         self.t_fin_hom = 60./self.m
 
         "How frequently to save data:"
-        self.flush_freq = 256#*120
+        self.flush_freq = 2*256#*120
         self.flush_freq_hom = 128*8
 
         "Use linearized evolution if True:"
-        #self.lin_evo = False
-        self.lin_evo = True
+        self.lin_evo = False#True#
 
         "Solve homogeneous field evolution if True:"
-        self.homogenQ = False
-        #self.homogenQ = True
+        self.homogenQ = False#True#
 
         "Set True to solve non-linearized evolution:"
-        #self.evoQ = False
-        self.evoQ = True
+        self.evoQ = True#False#
 
         """Whether to do non-Gaussianity calculations
            (this disables post-processing):"""
-        self.nonGaussianityQ = False
+        self.nonGaussianityQ = False#True#
 
         "Number of different simulations to run with identical intial values:"
-        self.sim_num = 2
+        self.sim_num = 1
 
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
-        self.scale = False
+        self.scale = False#True#
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        #self.fieldsQ = False
-        self.fieldsQ = True
+        self.fieldsQ = True#False#
 
         "If spectQ = True calculate spectrums at the end:"
-        #self.spectQ = False
-        self.spectQ = True
+        self.spectQ = True#False#
 
         "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = False
-        #self.distQ = True
+        self.distQ = False#True#
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
@@ -147,36 +142,29 @@ class Model:
         self.spect_m = 'defrost'#'latticeeasy'
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
-        #self.statsQ = False
-        self.statsQ = True
+        self.statsQ = True#False#
 
         """If field_r = True calculate also energy densities of fields
            without interaction terms:"""
-        #self.field_rho = False
-        self.field_rho = True
+        self.field_rho = True#False#
 
         """If field_lpQ = True calculate correlation lengths of
            the energy densities of the fields without interaction terms:"""
-        self.field_lpQ = False
-        #self.field_lpQ = True
+        self.field_lpQ = False#True#
 
         "If deSitter = True include -9H^2/(4m^2) terms in \omega_k^2 term:"
-        #self.deSitterQ = False
-        self.deSitterQ = True
+        self.deSitterQ = True#False#
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False
-        #self.testQ = True
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
-        #self.m2_effQ = False
-        self.m2_effQ = True
+        self.m2_effQ = True#False#
 
         "If csvQ = True writes curves from Silo files to csv files:"
-        #self.csvQ = False
-        self.csvQ = True
+        self.csvQ = True#False#
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.

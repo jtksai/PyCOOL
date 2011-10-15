@@ -180,6 +180,7 @@ class Postprocess:
         p_term = (-p/(6.*lat.VL_reduced))/a
         coeff = a**2.*lat.dx**6./(2.*lat.L**3)
 
+        "Call calc_pd to calculate the necessary effective masses:"
         self.calc_pd(lat, V, sim)
 
         for field in sim.fields:
@@ -209,12 +210,15 @@ class Postprocess:
                                      field.rho_k)
 
                 if lat.m2_eff:
-                    """Calculate the fraction of particles in relativistic
-                       regime:"""
+                    """Calculate the total number density of particles and
+                       the fraction of particles in the relativistic
+                       regime. This was explained in section 5.4 Spectra
+                       in the Latticeeasy guide:"""
                 
                     rel_num = 0.
                     total_N = 0.
 
+                    "Note that only non-homogeneous modes are included:"
                     for i in xrange(1,lat.ns):
                         if field.k_vals[i] > np.sqrt(field.m2_eff):
                             rel_num += (field.n_k[i]*field.W[i])
@@ -247,8 +251,10 @@ class Postprocess:
                                        field.rho_k)
 
                 if lat.m2_eff:
-                    """Calculate the fraction of particles in relativistic
-                       regime:"""
+                    """Calculate the total number density of particles and
+                       the fraction of particles in the relativistic
+                       regime. This was explained in section 5.4 Spectra
+                       in the Latticeeasy guide:"""
                 
                     rel_num = 0.
                     total_N = 0.
@@ -268,7 +274,7 @@ class Postprocess:
 
     def calc_dist(self, lat, sim):
         """Calculate empirical CDF and PDF functions from energy densities.
-           NOte that this has not been tested thoroughly:"""
+           Note that this has not been tested thoroughly:"""
 
         import scikits.statsmodels.tools.tools as tools
 
