@@ -12,7 +12,7 @@ class Model:
 
     def __init__(self):
 
-        self.model_name = 'curvaton'
+        self.model_name = 'curvaton - self-interacting'
 
         "Model parameters and values:"
 
@@ -26,9 +26,11 @@ class Model:
         "Scalar field masses:"
         #self.m2f1 = (3.162293471517152e-09)**2
         #self.m2f1 = (1.004987562112089e-09)**2
-        self.m2f1 = (5e-10)**2#1e-22#self.m**2.#
+        #self.m2f1 = (5e-10)**2#1e-22#self.m**2.#
+        self.m2f1 = (1e-11)**2#1e-22#self.m**2.#
         self.m2f2 = 0.0
-        self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
+        #self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
+        self.m2f1_old = (3e-9)**2
 
         "Initial values for the fields and the field time derivatives:"
         #self.f10 =  2e-3*self.mpl
@@ -84,7 +86,7 @@ class Model:
         #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
-        self.L = 1./2.*5./3./self.m
+        self.L = 5./6./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -97,7 +99,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 50./self.m
+        self.t_fin = 60./self.m
         #self.t_fin = 10./m
         self.t_fin_hom = 60./self.m
 

@@ -15,7 +15,8 @@ from lattice import *
 
 #from models.chaotic import *
 #from models.curvaton import *
-from models.curvaton_si import *
+#from models.curvaton_si import *
+from models.curvaton_single import *
 #from models.oscillon import *
 #from models.q_ball import *
 

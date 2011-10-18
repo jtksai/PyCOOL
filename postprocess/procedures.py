@@ -226,7 +226,8 @@ class Postprocess:
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
 
@@ -267,7 +268,8 @@ class Postprocess:
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
 
@@ -357,6 +359,8 @@ class Postprocess:
                             sim.rho_pdf[0],
                             sim.rho_pdf[1])
 
+            n_tot = np.zeros_like(sim.fields[0].n_cov_list)
+
             i = 1
             for field in sim.fields:
 
@@ -406,6 +410,9 @@ class Postprocess:
                     f.put_curve('field'+str(i)+'_n_cov',
                                 t_val, c**3*n_cov_val)
 
+                    n_tot += n_cov_val
+
+
                 if lat.field_rho and lat.dist:
                     f.put_curve('field'+str(i)+'_rho_CDF',
                                 field.rho_cdf[0],
@@ -437,6 +444,10 @@ class Postprocess:
                                 t_val, kurt_val)
 
                 i += 1
+
+            if lat.m2_eff:
+                f.put_curve('n_tot', t_val, c**3*n_tot)
+                
 
             f.close()
 

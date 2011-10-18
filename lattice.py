@@ -310,7 +310,7 @@ class Potential:
         self.v_int = model.V_int
 
         "Form the total potential and interaction functions:"
-        if self.v_l != None:
+        if len(self.v_l)>0:
             self.V = self.v_l[0]
             for i in xrange(1,len(self.v_l)):
                 self.V += ' + ' + self.v_l[i]
@@ -330,12 +330,12 @@ class Potential:
             for i in xrange(1,len(self.v_int)):
                 self.V_int += ' + ' + self.v_int[i]
         else:
-            self.V_int = ''
+            self.V_int = '0.0'
 
         if self.V == '' or None:
             import sys
-            sys.exit(("All derivation and no potential function " +
-                      "makes PyCOOL a dull boy!"))
+            sys.exit(("\nAll derivation and no potential function " +
+                      "makes PyCOOL a dull boy!\n"))
 
         "List of different coefficients in potential function:"
         self.C_list = ['C'+str(i) for i in xrange(1,len(model.C_coeff)+1)]
@@ -369,7 +369,8 @@ class Potential:
                                    self.power_list, self.C_list, self.D_list,
                                    'H3', deriv_n=0, multiplier='4')
         else:
-            self.V_int_H3 = ''
+            "Use zero to avoid CUDA error messages:"
+            self.V_int_H3 = '0.0'
 
         "Derivative dV/df_i for all field variables f_i in CUDA form:"
         self.dV_H3 = [V_calc(self.V, n, self.f_list, i+1, self.power_list,
@@ -394,7 +395,8 @@ class Potential:
                                    self.power_list, self.C_list, self.D_list,
                                    'rp', deriv_n=0)
         else:
-            self.V_int_rp = ''
+            "Use zero to avoid CUDA error messages:"
+            self.V_int_rp = '0.0'
 
 
         "Derivative d2V/df_i^2 for all field variables f_i in CUDA form:"
@@ -416,7 +418,8 @@ class Potential:
                                    self.power_list, self.C_list, self.D_list,
                                    'pd', multiplier = '4')
         else:
-            self.V_pd_int = ''
+            "Use zero to avoid CUDA error messages:"
+            self.V_pd_int = '0.0'
 
         "Derivative d2V/df_i^2 for all field variables f_i in CUDA form:"
         self.d2V_pd = [V_calc(self.V , n, self.f_list, i+1,
