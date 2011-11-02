@@ -74,7 +74,7 @@ class Model:
         self.dtau_hom = 1./(10000*self.m)
 
         "Lattice side length:"
-        self.L = 10./self.m
+        self.L = 5./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64

@@ -21,14 +21,14 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-10
+        self.m = 1e-8
 
         "Scalar field masses:"
         self.m2f1 = self.m**2.
         self.m2f2 = 0.0
 
         "Coupling strengths:"
-        self.g2 = 1e-8
+        self.g2 = 1e-4
 
         "Initial values for the fields and the field time derivatives:"
 

@@ -830,7 +830,8 @@ class Simulation:
             pres_val = np.asarray(self.flush_pres,dtype=np.float64)
 
             "Comoving horizon:"
-            hor_val = 1.0/(a_val*H_val)*lat.m
+            #hor_val = (1.0/(a_val*H_val)*lat.m)/lat.L
+            hor_val = (1.0/(a_val*H_val))/lat.L
 
             "ln(a) as a function ln(1/H):"
             ln_a_val = np.log(a_val)
@@ -1206,6 +1207,7 @@ class Simulation:
             field.m2_eff_list = []
             field.rel_num_list = []
             field.n_cov_list = []
+            field.rho_cov_list = []
             field.mean_list = []
             field.var_list = []
             field.skew_list = []
@@ -1386,6 +1388,7 @@ class field:
 
         """Store the values of comoving number densities of the field."""
         self.n_cov_list = []
+        self.rho_cov_list = []
 
         """Store the values of field statistisc e.g. skewness and kurtosis:"""
         self.mean_list = []

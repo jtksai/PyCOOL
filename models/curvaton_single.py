@@ -24,7 +24,7 @@ class Model:
         self.m = 1e-10
 
         "Scalar field masses:"
-        self.m2f1 = 1e-22
+        self.m2f1 = (3e-10)**2#0.0#
         self.m2f2 = 0.0
 
         "Initial values for the fields and the field time derivatives:"
@@ -44,7 +44,7 @@ class Model:
         self.fields0 = [self.f10]
         self.pis0 = [self.df1_dt0]
 
-        self.q = self.g2*self.f10**2/(4*self.m2f1)
+        #self.q = self.g2*self.f10**2/(4*self.m2f1)
 
         "List of the potential functions:"
 
@@ -79,10 +79,10 @@ class Model:
         #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
-        self.L = 5./6./self.m
+        self.L = 2*5./6./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 64
+        self.n = 2*64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -92,12 +92,12 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 150./self.m
+        self.t_fin = 200./self.m
         #self.t_fin = 10./m
         self.t_fin_hom = 60./self.m
 
         "How frequently to save data:"
-        self.flush_freq = 256#*120
+        self.flush_freq = 2*256#*120
         self.flush_freq_hom = 128*8
 
         "Use linearized evolution if True:"
@@ -123,7 +123,7 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = True#False#
+        self.fieldsQ = False#True#
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#

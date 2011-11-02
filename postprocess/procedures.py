@@ -169,14 +169,18 @@ class Postprocess:
         a = sim.a
         p = sim.p
 
-        #a_term = 1./a**3.
-        #p_term = (3./2.)*(-p/(6.*lat.VL_reduced))/a**2.
-        #coeff = a**3.*lat.dx**6./(2.*lat.L**3)
+        """a_term multiplies Pi_k, p_term F_k and a2_term multiplies
+           k**2*dk**2 + a**2*m2_eff term:"""
 
+        "Use X_k = a^(3/2)*x_k scaling:"
         #a_term = 1./a**2.
-        #p_term = 0.
+        #a2_term = 1.#1./a**2.
+        #p_term = -p/(4.*lat.VL_reduced*a)
+        #coeff = a**2.*lat.dx**6./(2.*lat.L**3)
 
+        "Coefficients used in LatticeEasy i.e. use X_k = a*x_k scaling:"
         a_term = 1./a**2.
+        #a2_term = 1.#1./a**2.#
         p_term = (-p/(6.*lat.VL_reduced))/a
         coeff = a**2.*lat.dx**6./(2.*lat.L**3)
 
@@ -205,7 +209,7 @@ class Postprocess:
                 field.n_k = np.where(field.W > 0.,
                                      field.n_k/field.W,
                                      field.n_k)
-                field.rho_k = np.where(field.W > 0.,
+                field.rho_k = 1./a*np.where(field.W > 0.,
                                      field.rho_k/field.W,
                                      field.rho_k)
 
@@ -217,19 +221,26 @@ class Postprocess:
                 
                     rel_num = 0.
                     total_N = 0.
+                    total_rho = 0.
 
                     "Note that only non-homogeneous modes are included:"
                     for i in xrange(1,lat.ns):
                         if field.k_vals[i] > np.sqrt(field.m2_eff):
                             rel_num += (field.n_k[i]*field.W[i])
                         total_N += (field.n_k[i]*field.W[i])
+                        total_rho += (field.rho_k[i]*field.W[i])
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
-                    n_cov = total_N*(lat.dk/(2*np.pi))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
+
+                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+
+                    field.rho_cov_list.append(rho_cov)
 
 
             if method == 'defrost':
@@ -247,7 +258,7 @@ class Postprocess:
                 field.n_k = np.where(field.W_df > 0.,
                                      field.n_k/field.W_df,
                                      field.n_k)
-                field.rho_k = np.where(field.W_df > 0.,
+                field.rho_k = 1./a*np.where(field.W_df > 0.,
                                        field.rho_k/field.W_df,
                                        field.rho_k)
 
@@ -259,19 +270,26 @@ class Postprocess:
                 
                     rel_num = 0.
                     total_N = 0.
+                    total_rho = 0.
 
                     "Note that only non-homogeneous modes are included:"
                     for i in xrange(1,lat.ns):
                         if field.k_vals[i] > np.sqrt(field.m2_eff):
                             rel_num += (field.n_k[i]*field.W_df[i])
                         total_N += (field.n_k[i]*field.W_df[i])
+                        total_rho += (field.rho_k[i]*field.W_df[i])
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
-                    n_cov = total_N*(lat.dk/(2*np.pi))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
+
+                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+
+                    field.rho_cov_list.append(rho_cov)
 
 
     def calc_dist(self, lat, sim):
@@ -406,11 +424,16 @@ class Postprocess:
 
                     n_cov_val = np.asarray(field.n_cov_list,
                                            dtype=np.float64)
-
                     f.put_curve('field'+str(i)+'_n_cov',
                                 t_val, c**3*n_cov_val)
 
                     n_tot += n_cov_val
+
+                    rho_cov_val = np.asarray(field.rho_cov_list,
+                                           dtype=np.float64)
+
+                    f.put_curve('field'+str(i)+'_rho_cov',
+                                t_val, c**3*rho_cov_val)
 
 
                 if lat.field_rho and lat.dist:
@@ -467,7 +490,8 @@ class Postprocess:
 
     def calc_post(self, lat, V, sim, data_path, method = 'defrost'):
         """Calculate all the required spectra, statistiscs etc. in
-           folder 'data_path'"""
+           folder 'data_path'. This is used when calculating spectra
+           after the simulation is complete."""
 
         from misc_functions import files_in_folder
 

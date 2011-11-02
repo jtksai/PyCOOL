@@ -27,7 +27,8 @@ class Model:
         #self.m2f1 = (3.162293471517152e-09)**2
         #self.m2f1 = (1.004987562112089e-09)**2
         #self.m2f1 = (5e-10)**2#1e-22#self.m**2.#
-        self.m2f1 = (1e-11)**2#1e-22#self.m**2.#
+        #self.m2f1 = (1e-11)**2#1e-22#self.m**2.#
+        self.m2f1 = 1e-19
         self.m2f2 = 0.0
         #self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
         self.m2f1_old = (3e-9)**2
@@ -41,8 +42,8 @@ class Model:
         self.df2_dt0 = 10.**-20.
 
         "Coupling strengths:"
-        self.g2 = 1e-8
-        self.lamb2 = 2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#5e-10#
+        self.g2 = 1e-9
+        self.lamb2 = 5e-10#2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#
 
         "Radiation field:"
         self.lamb = 1.0e-20
@@ -86,7 +87,7 @@ class Model:
         #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
-        self.L = 5./6./self.m
+        self.L = 2*5./6./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
