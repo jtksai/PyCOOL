@@ -421,24 +421,25 @@ class Simulation:
         - sum over z-direction of pressure density pressum_gpu
         - sum_gpu that is used when updating canonical momentum p
         - pa_gpu used in calc_wk_conf function. It equals p'/a.
-        - filetype = The used filetype. Either hdf5 or silo.
+        - filetype = The used filetype. Either silo (preferred) or hdf5.
         """
     
-    def __init__(self, model, lat, V, steps = 1000000, filetype='silo'):
+    def __init__(self, model, lat, V, a_in, fields0, pis0, steps = 1000000,
+                 filetype='silo'):
 
         print "-" * 79
 
         self.t = model.t_in
         self.t_list = [model.t_in]
-        self.a = model.a_in
-        self.a_in = model.a_in
-        self.a_list = [model.a_in]
+        self.a = a_in
+        self.a_in = a_in
+        self.a_list = [a_in]
         self.i0 = 0
         self.i0_list = [0]
 
         self.rho_r0 = model.rho_r0
         self.rho_m0 = model.rho_m0
-        self.rho = (rho_init(V, model.fields0, model.pis0) + model.rho_r0
+        self.rho = (rho_init(V, fields0, pis0) + model.rho_r0
                     + model.rho_m0)
         self.rho_in = self.rho
         self.rho_hom = self.rho
@@ -456,8 +457,8 @@ class Simulation:
         "Variables and arrays used in homogeneous background calculations:"
         self.t_hom = model.t_in
         self.t_list_hom = [model.t_in]
-        self.a_hom = model.a_in
-        self.a_list_hom = [model.a_in]
+        self.a_hom = a_in
+        self.a_list_hom = [a_in]
         self.i0_hom = 0
         self.i0_list_hom = [0]
 
@@ -492,8 +493,11 @@ class Simulation:
         elif cuda.Device.count() > 1:
             self.steps = steps
 
+        "Set flush frequency of the data:"
+        self.flush_freq = model.flush_freq
 
         "These are used when flushing data:"
+        self.flush_i0 = []
         self.flush_t = []
         self.flush_a = []
         self.flush_p = []
@@ -507,6 +511,7 @@ class Simulation:
         self.k_error = []
         "Energy densities:"
         self.omega_rad_list = []
+        #self.omega_rad2_list = []
         self.omega_mat_list = []
         self.omega_int_list = []
 
@@ -538,14 +543,21 @@ class Simulation:
         self.a_lin_end = self.a
         self.p_lin_end = self.p
 
-        "Create the fields:"
+        """
+        ###################
+        Create the fields:
+        ###################
+        """
         if lat.test:
             print'Testing mode on! Set testQ to False to disable this.\n'
         
-        self.m2_eff = mass_eff(V, lat.field_list, model.fields0, self.H,
+        self.fields0 = fields0
+        self.pis0 = pis0
+
+        self.m2_eff = mass_eff(V, lat.field_list, fields0, self.H,
                                self.deSitter)
-        self.fields = [field(lat, V, model.fields0[i], model.pis0[i], i+1,
-                             self.m2_eff[i], model.a_in, lat.init_mode,
+        self.fields = [field(lat, V, fields0[i], pis0[i], i+1,
+                             self.m2_eff[i], a_in, lat.init_mode,
                              lat.hom_mode)
                        for i in xrange(lat.fields)]
         "Function to calculate the numerical value of the potential function:"
@@ -609,13 +621,23 @@ class Simulation:
         "Filetype to be used:"
         self.filetype = filetype
 
+        "Simulation time and time per step:"
+        self.time_sim = 0.
+        self.per_stp = 0.
+
     def add_to_lists(self, lat):
         "Append variables to list:"
+
+        a = self.a
+        p = self.p
+        H = -p/(6*a**2.*lat.VL_reduced)
+
         self.i0_list.append(self.i0)
         self.t_list.append(self.t)
-        self.a_list.append(self.a)
-        self.p_list.append(self.p)
-        self.H_list.append(-self.p/(6*self.a**2.*lat.VL_reduced))
+        self.a_list.append(a)
+        self.p_list.append(p)
+        self.H_list.append(H)
+        #self.omega_rad2_list.append(self.rho_r0*(self.a_in/a)**4.0/(3.*H**2))
 
         #for field in self.fields:
         #    field.f0_list.append(field.f0)
@@ -1139,7 +1161,7 @@ class Simulation:
         for field in self.fields:
             field.sample_field(lat, a, init_m, homogQ = False)
 
-    def reinit(self, model, lat, a, init_m = 'defrost_cpu'):
+    def reinit(self, model, lat, V, a, fields0, pis0, init_m = 'defrost_cpu'):
         """Re-init the system back to initial values and resample fields.
            Also reset any list used to store values"""
 
@@ -1150,20 +1172,37 @@ class Simulation:
         self.i0 = 0
         self.i0_list = [0]
 
-        self.rho = self.rho_in
+        self.rho = (rho_init(V, fields0, pis0) + model.rho_r0
+                    + model.rho_m0)
+        self.rho_in = self.rho
 
-        self.H = self.H_in
+        self.H = np.sqrt(lat.mpl**2.*self.rho/3.)
+        self.H_in = np.sqrt(lat.mpl**2.*self.rho_in/3.)
+
         self.H_list = [self.H]
 
         self.p = -6.*lat.VL_reduced*self.H*self.a**2.
         self.p_list = [self.p]
 
+        self.m2_eff = mass_eff(V, lat.field_list, fields0, self.H,
+                               self.deSitter)
+
+        self.fields0 = fields0
+        self.pis0 = pis0
+
         #self.t_gpu = gpuarray.to_gpu(np.array(self.t, dtype = lat.prec_real))
         #self.a_gpu = gpuarray.to_gpu(np.array(self.a, dtype = lat.prec_real))
         #self.p_gpu = gpuarray.to_gpu(np.array(self.p, dtype = lat.prec_real))
 
-        for field in self.fields:
-            field.sample_field(lat, a, init_m)
+        #for field in self.fields:
+        #    field.sample_field(lat, a, init_m)
+
+        "Recreate the fields:"
+        self.fields = [field(lat, V, fields0[i], pis0[i], i+1,
+                             self.m2_eff[i], a, lat.init_mode,
+                             lat.hom_mode)
+                       for i in xrange(lat.fields)]
+
 
         "Reset variables used in linearized evo:"
         if self.lin_evo:
@@ -1188,6 +1227,7 @@ class Simulation:
 
         self.lp_list = []
 
+        self.flush_i0 = []
         self.flush_t = []
         self.flush_a = []
         self.flush_p = []
@@ -1203,6 +1243,7 @@ class Simulation:
         self.omega_int_list = []
         self.lp_list = []
 
+        """
         for field in self.fields:
             field.m2_eff_list = []
             field.rel_num_list = []
@@ -1215,10 +1256,12 @@ class Simulation:
             field.w_list = []
             field.omega_list = []
             if self.lin_evo:
+                ################
                 field.f0_field[0] = field.f0_in
                 field.pi0_field[0] = field.pi0_in
                 cuda.memcpy_htod(field.f0_gpu.gpudata, field.f0_field)
                 cuda.memcpy_htod(field.pi0_gpu.gpudata, field.pi0_field)
+        """
 
     def set_non_lin(self):
         """Set the values of a and p equal to the values
@@ -1439,7 +1482,8 @@ class field:
         self.f_gpu = gpuarray.to_gpu(np.array(tmp))
         self.pi_gpu = gpuarray.to_gpu(np.array(tmp2))
 
-    def sample_field(self, lat, a_in, flag_method, homogQ = True):
+    def sample_field(self, lat, a_in, flag_method,
+                     homogQ = True):
         """Recreate the initial perturbations if needed without
            the homogeneous values:"""
         
@@ -1902,6 +1946,7 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     "This function updates the energy density and the pressure fields."
 
     a = sim.a
+    a_in = sim.a_in
     p = sim.p
     i0 = sim.i0
     VL = lat.VL
@@ -1933,9 +1978,10 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
 
     "Calculate average energy densities:"
 
-    rho_tot = sum(sum(sim.rhosum_host))/VL + rho_m0/a**3.0 + rho_r0/a**4.0
+    rho_tot = (sum(sum(sim.rhosum_host))/VL + rho_m0*(a_in/a)**3.0
+               + rho_r0*(a_in/a)**4.0)
 
-    pres_tot = sum(sum(sim.pressum_host))/VL + 1./3.*rho_r0/a**4.0
+    pres_tot = sum(sum(sim.pressum_host))/VL + 1./3.*rho_r0*(a_in/a)**4.0
 
     rho_inter = sum(sum(sim.inter_sum_host))/VL
     
@@ -1951,8 +1997,8 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
          for x in sim.fields]
 
     "Radiation and matter energy density fractions:"
-    omega_rad = (rho_r0/a**4.0)/rho_tot
-    omega_mat = (rho_m0/a**3.0)/rho_tot
+    omega_rad = (rho_r0*(a_in/a)**4.0)/rho_tot
+    omega_mat = (rho_m0*(a_in/a)**3.0)/rho_tot
 
     "Energy density fraction of interaction terms:"
     omega_int = rho_inter/rho_tot
@@ -2014,6 +2060,7 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     if flush:
 
         "Append the values to flush lists:"
+        sim.flush_i0.append(i0)
         sim.flush_t.append(t)
         sim.flush_a.append(a)
         sim.flush_p.append(p/VL)
@@ -2221,7 +2268,7 @@ def evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
     H1_step(lat, sim, dt/2)
 
     #sim.t += sim.a*dt
-    sim.H = -sim.p/(6*sim.a)
+    sim.H = (-sim.p/(6*sim.a**2.*lat.VL_reduced))
 
 def evo_step_4(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
                cuda_args, dt):

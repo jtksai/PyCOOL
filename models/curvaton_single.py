@@ -27,32 +27,37 @@ class Model:
         self.m2f1 = (3e-10)**2#0.0#
         self.m2f2 = 0.0
 
-        "Initial values for the fields and the field time derivatives:"
-        #self.f10 =  2e-3*self.mpl
-        self.f10 =  2e-4*self.mpl
-
-        self.df1_dt0 = 10.**-20.
-
         "Coupling strengths:"
         self.g2 = 1e-8
         self.lamb2 = 5e-10
 
         "Radiation field:"
-        self.lamb = 1.0e-20
+        self.lamb = 1.0e-18
         self.psi = np.sqrt(self.mpl)
+
+        "Variance of f10 within our current Hubble volume:"
+        self.deltaf10 = np.sqrt(4/(9*np.pi**2)*self.lamb*60**3.)
+
+        "Initial values for the fields and the field time derivatives:"
+        #self.f10 =  1e-3*self.mpl
+        self.f10 =  2e-4*self.mpl + 1./10.*self.deltaf10/2.
+
+        self.df1_dt0 = 10.**-20.
+
 
         self.fields0 = [self.f10]
         self.pis0 = [self.df1_dt0]
+
 
         #self.q = self.g2*self.f10**2/(4*self.m2f1)
 
         "List of the potential functions:"
 
         "Potentials functions of the fields including self-interactions:"
-        self.V_list = ["0.5*C1*f1**2"]
+        self.V_list = ["0.5*C1*f1**2 + 0.25*C2*f1**4"]
 
         "Interaction terms of the fields:"
-        self.V_int = ['0.25*C2*f1**4']
+        self.V_int = ['']
 
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
@@ -71,18 +76,18 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(5000*self.m)
-        #self.dtau = 1./(1000*m)
+        #self.dtau = 1./(5000*self.m)
+        self.dtau = 1./(1000*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
-        #self.dtau_hom = 1./(1000*m)
+        #self.dtau_hom = 1./(1000*self.m)
 
         "Lattice side length:"
-        self.L = 2*5./6./self.m
+        self.L = 5./6./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 2*64
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -92,9 +97,9 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 200./self.m
+        self.t_fin = 350./self.m
         #self.t_fin = 10./m
-        self.t_fin_hom = 60./self.m
+        self.t_fin_hom = 2./self.m
 
         "How frequently to save data:"
         self.flush_freq = 2*256#*120
@@ -113,8 +118,21 @@ class Model:
            (this disables post-processing):"""
         self.nonGaussianityQ = False#True#
 
+        """If True turns zeta mode on that can be used to calculate
+           curvature perturbation:"""
+        self.zetaQ = False#True#
+
+        "The reference value at which curvature perturbation is calculated:"
+        self.H_ref = 2e-13
+
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
+
+        "If True make a superfolder that has all the different simulations:"
+        self.superfolderQ = False#True#
+
+        "Name of the superfolder:"
+        self.superfolder = 'zeta_run'
 
 
         """If True multiplies energy densities with 1/m^2.
@@ -123,7 +141,7 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = False#True#
+        self.fieldsQ = True#False#
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#
@@ -159,7 +177,7 @@ class Model:
         self.m2_effQ = True#False#
 
         "If csvQ = True writes curves from Silo files to csv files:"
-        self.csvQ = True#False#
+        self.csvQ = False#True#
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
@@ -173,10 +191,11 @@ class Model:
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
+            self.fieldsQ = False
             self.field_rho = False
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120
+            self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
-
+            self.superfolderQ = True

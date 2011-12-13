@@ -77,7 +77,7 @@ class Model:
         self.L = 5./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 64
+        self.n = 128
 
         "Initial scale parameter:"
         self.a_in = 1.

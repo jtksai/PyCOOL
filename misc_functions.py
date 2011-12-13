@@ -445,7 +445,11 @@ def make_dir(model, lat, V, sim, path = None):
     
     time_text = time_now.replace('T',' ')
 
-    data_path = path + '/data/' + time_form
+    if model.superfolderQ:
+        data_path = path + '/data/' + model.superfolder + '/' + time_form
+    else:
+        data_path = path + '/data/' + time_form
+
     os.makedirs(data_path)
 
     f = open(data_path + '/info.txt','w')
@@ -591,7 +595,7 @@ def files_in_folder(path=None, filetype='silo'):
 
     return files
 
-def write_csv(lat, data_path, source = 'silo'):
+def write_csv(lat, data_path, mode = 'non-lin', source = 'silo'):
     "This reads curves from a silo file and writes the data to a csv file:"
 
     import os
@@ -611,9 +615,12 @@ def write_csv(lat, data_path, source = 'silo'):
             f = silo.SiloFile(x, create=False, mode=silo.DB_READ)
             curves = f.get_toc().curve_names
         
-            if lat.spect:
+            if lat.spect and mode == 'non-lin':
                 k_val = f.get_curve('field1'+'_S_k').x
-            t_val = f.get_curve('a').x
+            if mode == 'non-lin':
+                t_val = f.get_curve('a').x
+            elif mode == 'homog':
+                t_val = f.get_curve('a_hom').x
 
             f_name = data_path + '/csv/' + x.split('.')[-2] + '.csv'
 
@@ -621,7 +628,7 @@ def write_csv(lat, data_path, source = 'silo'):
             writer = csv.writer(csv_file)
             writer.writerow(['t_val','k_val'] + curves)
             writer.writerow(t_val)
-            if lat.spect:
+            if lat.spect and mode == 'non-lin':
                 writer.writerow(k_val)
             for curve in curves:
                 writer.writerow(f.get_curve(curve).y)
@@ -631,6 +638,57 @@ def write_csv(lat, data_path, source = 'silo'):
 
             i += 1
         
+
+def write_zeta_result(data_path, result):
+    "This reads curves from a silo file and writes the data to a csv file:"
+
+    import os
+    import csv
+
+    path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+
+    f_name = path + '/zeta_results.csv'
+
+    #try:
+    #   open(f_name)
+    #except IOError as e:
+    #   print 'Oh dear.'
+
+    csv_file = open(f_name,'a')
+    writer = csv.writer(csv_file)
+
+    writer.writerow(result)
+
+    csv_file.close()
+
+
+def read_zeta(data_path):
+    
+    import os
+    import csv
+
+    path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+
+    csv_file = open(f_name,'r')
+
+    reader = csv.reader(csv_file)
+
+    table = []
+
+    for row in reader:
+        table.append(row)
+
+    t2 = np.array(table,dtype=float)
+
+    t3=np.array_split(t2,21)
+
+    t0=t3[10]
+
+    dln_a=(t3-t0)[:,:,2]
+    dr_ref = (t3-t0)[:,:,3]
+
+    zeta = dln_a + 0.25*(0.08/r_ref_ave-1)*dr_ref
+
 
 ###############################################################################
 # Misc CUDA functions

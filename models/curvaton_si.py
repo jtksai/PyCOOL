@@ -124,6 +124,12 @@ class Model:
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
+        "If True make a superfolder that has all the different simulations:"
+        self.superfolderQ = True
+
+        "Name of the superfolder:"
+        self.superfolder = 'zeta_run'
+
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""

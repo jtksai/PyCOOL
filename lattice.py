@@ -309,23 +309,25 @@ class Potential:
         self.v_l = model.V_list
         self.v_int = model.V_int
 
+        
+
         "Form the total potential and interaction functions:"
         if len(self.v_l)>0:
             self.V = self.v_l[0]
             for i in xrange(1,len(self.v_l)):
                 self.V += ' + ' + self.v_l[i]
-            if len(self.v_int)>0:
+            if len(self.v_int)>0 and self.v_int != ['']:
                 for x in self.v_int:
                     self.V += ' + ' + x
         else:
-            if len(self.v_int)>0:
+            if len(self.v_int)>0 and self.v_int != ['']:
                 self.V = self.v_int[0]
                 for i in xrange(1,len(self.v_int)):
                     self.V += ' + ' + self.v_int[i]
             else:
                 self.V = ''
 
-        if len(self.v_int)>0:
+        if len(self.v_int)>0 and self.v_int != ['']:
             self.V_int = self.v_int[0]
             for i in xrange(1,len(self.v_int)):
                 self.V_int += ' + ' + self.v_int[i]
@@ -364,7 +366,8 @@ class Potential:
 
         """Interaction term V_{int} of the fields in CUDA form used in
            the H3 kernel:"""
-        if len(self.v_int)>0:
+        if len(self.v_int)>0 and self.v_int != ['']:
+            print 'self.V_int', self.V_int
             self.V_int_H3 = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'H3', deriv_n=0, multiplier='4')
@@ -390,7 +393,7 @@ class Potential:
 
         """Interaction term V_{int} of the fields in CUDA form used in
            the rho and pressure kernels:"""
-        if len(self.v_int)>0:
+        if len(self.v_int)>0 and self.v_int != ['']:
             self.V_int_rp = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'rp', deriv_n=0)
@@ -413,7 +416,7 @@ class Potential:
         else:
             self.V_pd_i = [None for f in xrange(lat.fields)]
 
-        if len(self.v_int)>0:
+        if len(self.v_int)>0 and self.v_int != ['']:
             self.V_pd_int = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'pd', multiplier = '4')
