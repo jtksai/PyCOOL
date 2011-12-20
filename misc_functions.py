@@ -637,57 +637,6 @@ def write_csv(lat, data_path, mode = 'non-lin', source = 'silo'):
             f.close()
 
             i += 1
-        
-
-def write_zeta_result(data_path, result):
-    "This reads curves from a silo file and writes the data to a csv file:"
-
-    import os
-    import csv
-
-    path = os.path.abspath(os.path.join(data_path, os.path.pardir))
-
-    f_name = path + '/zeta_results.csv'
-
-    #try:
-    #   open(f_name)
-    #except IOError as e:
-    #   print 'Oh dear.'
-
-    csv_file = open(f_name,'a')
-    writer = csv.writer(csv_file)
-
-    writer.writerow(result)
-
-    csv_file.close()
-
-
-def read_zeta(data_path):
-    
-    import os
-    import csv
-
-    path = os.path.abspath(os.path.join(data_path, os.path.pardir))
-
-    csv_file = open(f_name,'r')
-
-    reader = csv.reader(csv_file)
-
-    table = []
-
-    for row in reader:
-        table.append(row)
-
-    t2 = np.array(table,dtype=float)
-
-    t3=np.array_split(t2,21)
-
-    t0=t3[10]
-
-    dln_a=(t3-t0)[:,:,2]
-    dr_ref = (t3-t0)[:,:,3]
-
-    zeta = dln_a + 0.25*(0.08/r_ref_ave-1)*dr_ref
 
 
 ###############################################################################

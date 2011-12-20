@@ -519,5 +519,101 @@ class Postprocess:
             self.flush(lat, sim, filename)
             
             k += 1
-            
 
+    def calc_zeta(self, sim, model, f0_list, field_i, r_decay, data_path):
+        """Calculates the curvature perturbation from the simulation data
+           and writes the results to file.
+
+           f0_list = List of different homogeneous initial values for the fields
+           field_i = Index of the field which initial values are varied.
+                     Should be equal to the field_i variable used in
+                     field object i.e. it starts from 1."""
+
+        import os
+        import csv
+        import numpy as np
+
+        path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+
+        i = field_i - 1
+
+        index = np.where(abs(np.array(f0_list)-model.fields0) < 1e-15)[i]
+
+        if len(index)==0:
+            print "Index of sim.fields0 in f0_list not found."
+        
+
+        ln_a = [np.array(x[2]) for x in sim.ln_a_list]
+        "Matter fraction:"
+        r = [np.array(x[2]) for x in sim.r_list]
+
+        """Average fraction of matter at reference point when
+           homogeneous value is equal to the one used in model file:""" 
+        r_ref_ave = np.mean(r[index])
+
+        f0_values = [x[i] for x in sim.r_list]
+
+
+        "\delta ln(a) = ln(a)|_{H_ref}-ln(a*)|_{H_ref}"
+        dln_a = ln_a - ln_a[index]
+
+        "\delta r = r|_{H_ref} - r*|_{H_ref}"
+        dr = r-r[index]
+        
+        "Full zeta, i.e. zeta at the different realizations:"
+        zeta_full = dln_a + 0.25*(r_decay/r_ref_ave - 1.)*dr
+
+        sim.zeta_full = zeta_full
+
+        "Means values:"
+        #sim.zeta_mean = np.array([f0_values,
+        #                          [np.mean(x) for x in zeta_full]]).transpose()
+        
+        sim.zeta_mean = [np.mean(x) for x in zeta_full]
+
+        "Standard deviations of zeta:"
+        sim.zeta_std =  [np.std(x) for x in zeta_full]
+
+        #Add dln_a_mean and dr_mean
+        sim.dln_a_mean = [np.mean(x) for x in dln_a]
+        sim.dr_mean = [np.mean(x) for x in dr]
+
+
+        f0_val = np.asarray(f0_values, dtype=np.float64)
+        zeta_mean_val = np.asarray(sim.zeta_mean, dtype=np.float64)
+        zeta_std_val = np.asarray(sim.zeta_std, dtype=np.float64)
+        dln_a_mean_val = np.asarray(sim.dln_a_mean, dtype=np.float64)
+        dr_mean_val = np.asarray(sim.dr_mean, dtype=np.float64)
+
+        "Write to file (currently only silo):"
+        mode = sim.filetype
+
+        if mode == 'silo':
+            import pyvisfile.silo as silo
+
+            filename = (path + '/zeta_results'+ 'r_dec_' + str(r_decay)
+                        + '.silo')
+
+            f = silo.SiloFile(filename, mode=silo.DB_CLOBBER)
+
+            f.put_curve('zeta_mean',f0_val,zeta_mean_val)
+            f.put_curve('zeta_std',f0_val,zeta_std_val)
+            f.put_curve('dln_a_mean',f0_val,dln_a_mean_val)
+            f.put_curve('dr',f0_val,dr_mean_val)
+
+
+        "Write a csv file:"
+        filename = (path + '/zeta_results'+ 'r_dec_' + str(r_decay)
+                    + '.csv')
+
+        csv_file = open(filename,'w')
+        writer = csv.writer(csv_file)
+        writer.writerow(['f0_values','zeta_mean','zeta_std','dln_a_mean',
+                         'dr_mean'])
+
+        writer.writerow(f0_val)
+        writer.writerow(zeta_mean_val)
+        writer.writerow(zeta_std_val)
+        writer.writerow(dln_a_mean_val)
+        writer.writerow(dr_mean_val)
+        csv_file.close()

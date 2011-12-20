@@ -261,13 +261,13 @@ def f_init(lat, field0, field_i, m2_eff, flag_method='defrost_cpu', homogQ=True)
 
     if flag_method=='defrost_gpu':
         f = sample_defrost_gpu(lat, gpu_conv,-0.25, m2_eff) + c*field0
-        print "Field " + repr(field_i)+ " init on gpu done"
+        print "\nField " + repr(field_i)+ " init on gpu done"
     elif flag_method=='defrost_cpu':
         f = sample_defrost_cpu(lat, gpu_conv,-0.25, m2_eff) + c*field0
-        print "Field " + repr(field_i)+ " init on cpu done"
+        print "\nField " + repr(field_i)+ " init on cpu done"
     elif flag_method=='defrost_cpu2':
         f = sample_defrost_cpu2(lat, gpu_conv,-0.25, m2_eff) + c*field0
-        print "Field " + repr(field_i)+ " init on cpu done"
+        print "\nField " + repr(field_i)+ " init on cpu done"
 
     return np.array(f, dtype = lat.prec_real)
 

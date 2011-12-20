@@ -16,8 +16,8 @@ from lattice import *
 
 #from models.chaotic import *
 #from models.curvaton import *
-#from models.curvaton_si import *
-from models.curvaton_single import *
+from models.curvaton_si import *
+#from models.curvaton_single import *
 #from models.oscillon import *
 #from models.q_ball import *
 
@@ -36,8 +36,9 @@ sim = si.Simulation(model, lat, V, model.a_in, model.fields0, model.pis0,
 evo = si.Evolution(lat, V, sim)
 postp = pp.Postprocess(lat, V)
 
-"Create a new folder for the data:"
-data_path = make_dir(model, lat, V, sim)
+if model.zetaQ == False:
+    "Create a new folder for the data:"
+    data_path = make_dir(model, lat, V, sim)
 
 """Set the average values of the fields equal to
 their homogeneous values:"""
@@ -75,7 +76,7 @@ Start Simulation
 if model.homogenQ:
     print '\nSolving homogeneous equations:\n'
 
-    solv.solve_hom(lat, V, model, start, end, order = 4)
+    solv.run_hom(lat, V, model, start, end, order = 4)
 
     sim.time_sim += end.time_since(start)*1e-3
     sim.per_stp += time_sim/sol.sim.i0_hom
@@ -97,8 +98,34 @@ if model.evoQ:
                         print_w = False)
 
 
-"Print simulation time info:"
-sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
+if sim.i0 != 0:
+    "Print simulation time info:"
+    sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
+
+
+"Curvature perturbation (zeta) calculations:"
+
+if model.zetaQ:
+
+    "List of different homogeneous initial values for fields:"
+    f0_list = [[model.f10 + i/10.*model.delta_f10/2.] for i in xrange(-10,11)]
+
+    for fields0 in f0_list:
+        solv.reinit(lat, V, sim, evo, model, model.a_in, fields0, model.pis0)
+        data_path = make_dir(model, lat, V, sim)
+
+        solv.run_non_linear(lat, V, sim, evo, postp, model, start, end,
+                        data_path, order = 4, endQ = 'H', print_Q = True,
+                        print_w = False)
+
+        sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
+
+    postp.calc_zeta(sim, model, f0_list, 1, 0.13, data_path)
+
+
+
+
+
 
 """
 ####################

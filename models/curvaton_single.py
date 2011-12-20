@@ -21,34 +21,35 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-10
+        self.m = 1e-9
 
         "Scalar field masses:"
-        self.m2f1 = (3e-10)**2#0.0#
+        #self.m2f1 = (3e-10)**2#0.0#
+        self.m2f1 = (1e-9)**2
         self.m2f2 = 0.0
 
         "Coupling strengths:"
         self.g2 = 1e-8
-        self.lamb2 = 5e-10
+        self.lamb2 = 1e-7
 
         "Radiation field:"
-        self.lamb = 1.0e-18
+        self.lamb = 1.0e-16
         self.psi = np.sqrt(self.mpl)
 
         "Variance of f10 within our current Hubble volume:"
-        self.deltaf10 = np.sqrt(4/(9*np.pi**2)*self.lamb*60**3.)
+        self.delta_f10 = np.sqrt(4/(9*np.pi**2)*self.lamb*60**3.)
 
         "Initial values for the fields and the field time derivatives:"
-        #self.f10 =  1e-3*self.mpl
-        self.f10 =  2e-4*self.mpl + 1./10.*self.deltaf10/2.
+        self.f10 = 2e-4*self.mpl
+        #self.f10 = 5e-6*self.mpl
 
-        self.df1_dt0 = 10.**-20.
-
+        self.df1_dt0 = 10.**-19.
 
         self.fields0 = [self.f10]
         self.pis0 = [self.df1_dt0]
 
-
+        self.k_test = np.sqrt(3*self.lamb2*self.f10**2)/self.m
+        self.dom_test = np.sqrt(self.lamb2/self.m2f1)*self.f10
         #self.q = self.g2*self.f10**2/(4*self.m2f1)
 
         "List of the potential functions:"
@@ -77,7 +78,7 @@ class Model:
 
         "Time step:"
         #self.dtau = 1./(5000*self.m)
-        self.dtau = 1./(1000*self.m)
+        self.dtau = 2*1./(1000*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
@@ -97,13 +98,9 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 350./self.m
+        self.t_fin = 500./self.m
         #self.t_fin = 10./m
-        self.t_fin_hom = 2./self.m
-
-        "How frequently to save data:"
-        self.flush_freq = 2*256#*120
-        self.flush_freq_hom = 128*8
+        self.t_fin_hom = 50./self.m
 
         "Use linearized evolution if True:"
         self.lin_evo = False#True#
@@ -111,29 +108,31 @@ class Model:
         "Solve homogeneous field evolution if True:"
         self.homogenQ = False#True#
 
-        "Set True to solve non-linearized evolution:"
+        "Set True to solve non-linearized evolution once:"
         self.evoQ = True#False#
 
-        """Whether to do non-Gaussianity calculations
-           (this disables post-processing):"""
-        self.nonGaussianityQ = False#True#
-
-        """If True turns zeta mode on that can be used to calculate
-           curvature perturbation:"""
-        self.zetaQ = False#True#
+        """Whether to do curvature perturbation (zeta) calculations
+           (this disables post-processing). Also disables evoQ:"""
+        self.zetaQ = True#False#
 
         "The reference value at which curvature perturbation is calculated:"
-        self.H_ref = 2e-13
+        self.H_ref = 1e-12
 
-        "Number of different simulations to run with identical intial values:"
-        self.sim_num = 1
+        "Number of different simulations to run with identical initial values:"
+        self.sim_num = 30
+
+        "How frequently to calculate rho and error:"
+        self.flush_freq = 2*256#*120
+        self.flush_freq_hom = 128*8
+
+        "If True write to file:"
+        self.saveQ = True#False#
 
         "If True make a superfolder that has all the different simulations:"
         self.superfolderQ = False#True#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run'
-
+        self.superfolder = 'zeta_run_1'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -165,7 +164,7 @@ class Model:
            the energy densities of the fields without interaction terms:"""
         self.field_lpQ = False#True#
 
-        "If deSitter = True include -9H^2/(4m^2) terms in \omega_k^2 term:"
+        "If deSitter = True include -9H^2/(4m^2) term in \omega_k^2 term:"
         self.deSitterQ = True#False#
 
         """If testQ = True use a constant seed. Can be used for debugging and
@@ -186,8 +185,10 @@ class Model:
 
         "Non-gaussianity related variables:"
         
-        "For non-Gaussianty studies disable post-processing by default:"
-        if self.nonGaussianityQ == True:
+        """For curvature perturbation studies disable post-processing
+           by default:"""
+        if self.zetaQ == True:
+            self.evoQ = False
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
@@ -199,3 +200,4 @@ class Model:
             self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
             self.superfolderQ = True
+            self.saveQ = False

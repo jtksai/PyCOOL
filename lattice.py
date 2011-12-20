@@ -367,7 +367,6 @@ class Potential:
         """Interaction term V_{int} of the fields in CUDA form used in
            the H3 kernel:"""
         if len(self.v_int)>0 and self.v_int != ['']:
-            print 'self.V_int', self.V_int
             self.V_int_H3 = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
                                    'H3', deriv_n=0, multiplier='4')

@@ -21,7 +21,7 @@ class Model:
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
         "Mass unit that is used to define other variables:"
-        self.m = 1e-10
+        self.m = 1e-9
 
         "Scalar field masses:"
         #self.m2f1 = (3.162293471517152e-09)**2
@@ -31,7 +31,18 @@ class Model:
         self.m2f1 = 1e-19
         self.m2f2 = 0.0
         #self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
-        self.m2f1_old = (3e-9)**2
+        self.m2f1_old = (1e-9)**2
+
+        "Coupling strengths:"
+        self.g2 = 1e-8
+        self.lamb2 = 1e-7#2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#
+
+        "Radiation field:"
+        self.lamb = 1.0e-16
+        self.psi = np.sqrt(self.mpl)
+
+        "Variance of f10 within our current Hubble volume:"
+        self.delta_f10 = np.sqrt(4/(9*np.pi**2)*self.lamb*60**3.)
 
         "Initial values for the fields and the field time derivatives:"
         #self.f10 =  2e-3*self.mpl
@@ -40,14 +51,6 @@ class Model:
 
         self.df1_dt0 = 10.**-20.
         self.df2_dt0 = 10.**-20.
-
-        "Coupling strengths:"
-        self.g2 = 1e-9
-        self.lamb2 = 5e-10#2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#
-
-        "Radiation field:"
-        self.lamb = 1.0e-20
-        self.psi = np.sqrt(self.mpl)
 
         self.fields0 = [self.f10, self.f20]
         self.pis0 = [self.df1_dt0, self.df2_dt0]
@@ -79,15 +82,15 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(5000*self.m)
-        #self.dtau = 1./(1000*m)
+        #self.dtau = 1./(5000*self.m)
+        self.dtau = 2*1./(1000*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
         #self.dtau_hom = 1./(1000*m)
 
         "Lattice side length:"
-        self.L = 2*5./6./self.m
+        self.L = 5./6./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -100,13 +103,9 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 60./self.m
+        self.t_fin = 500./self.m
         #self.t_fin = 10./m
         self.t_fin_hom = 60./self.m
-
-        "How frequently to save data:"
-        self.flush_freq = 2*256#*120
-        self.flush_freq_hom = 128*8
 
         "Use linearized evolution if True:"
         self.lin_evo = False#True#
@@ -117,18 +116,28 @@ class Model:
         "Set True to solve non-linearized evolution:"
         self.evoQ = True#False#
 
-        """Whether to do non-Gaussianity calculations
-           (this disables post-processing):"""
-        self.nonGaussianityQ = False#True#
+        """Whether to do curvature perturbation (zeta) calculations
+           (this disables post-processing). Also disables evoQ:"""
+        self.zetaQ = False#True#
+
+        "The reference value at which curvature perturbation is calculated:"
+        self.H_ref = 1e-12
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
+        "How frequently to save data:"
+        self.flush_freq = 256#*120
+        self.flush_freq_hom = 128*8
+
+        "If True write to file:"
+        self.saveQ = True#False#
+
         "If True make a superfolder that has all the different simulations:"
-        self.superfolderQ = True
+        self.superfolderQ = False#True#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run'
+        self.superfolder = 'zeta_run_3'
 
 
         """If True multiplies energy densities with 1/m^2.
@@ -183,14 +192,17 @@ class Model:
         "Non-gaussianity related variables:"
         
         "For non-Gaussianty studies disable post-processing by default:"
-        if self.nonGaussianityQ == True:
+        if self.zetaQ == True:
+            self.evoQ = False
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
+            self.fieldsQ = False
             self.field_rho = False
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120
+            self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
-
+            self.superfolderQ = True
+            self.saveQ = False

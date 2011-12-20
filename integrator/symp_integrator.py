@@ -474,6 +474,19 @@ class Simulation:
         self.zeros = np.zeros(lat.dim_lH, dtype = lat.prec_real)
         self.zeros_i = np.zeros(lat.dims_k, dtype = np.int32)
 
+        "Zeta i.e. curvature perturbation related variables:"
+        self.dln_a_mean = 0
+        self.dr_mean = 0
+
+        self.zeta_mean = 0
+        self.zeta_std = 0
+
+        """Lists for ln(a) and r := Omega_some_field that are used
+           in the curvature perturbation calculations done in
+           solvers.py file:"""
+        self.ln_a_list = []
+        self.r_list = []
+
         if self.lin_evo:
             "Array of k^2 values corresponding to discrete Laplacian:"
             self.k2_field = gpuarray.to_gpu(np.zeros(lat.dims_k))
@@ -504,6 +517,7 @@ class Simulation:
         self.flush_H = []
         self.flush_rho = []
         self.flush_pres = []
+        self.flush_eq_state = []
         
         "Absolute error:"
         self.fried_1 = []
@@ -530,7 +544,7 @@ class Simulation:
         #self.omega_mat_list = []
 
         """These are used when reading data from files to store the time
-           and scale parameter values:"""
+           and scale parameter values (maybe redundant):"""
         self.t_read_list = []
         self.a_read_list = []
         self.t_write_list = []
@@ -850,6 +864,7 @@ class Simulation:
             H_val = np.asarray(self.flush_H,dtype=np.float64)
             rho_val = np.asarray(self.flush_rho,dtype=np.float64)
             pres_val = np.asarray(self.flush_pres,dtype=np.float64)
+            eq_val = np.asarray(self.flush_eq_state,dtype=np.float64)
 
             "Comoving horizon:"
             #hor_val = (1.0/(a_val*H_val)*lat.m)/lat.L
@@ -889,6 +904,7 @@ class Simulation:
 
             f.put_curve('rho_ave',t_val,rho_val,optlist=options2)
             f.put_curve('pres_ave',t_val,pres_val,optlist=options2)
+            f.put_curve('eq_state',t_val,eq_val,optlist=options2)
             #f.put_curve('matterfrac',t_val,r_val,optlist=options2)
             #f.put_curve('rhoinv',rho_inv,r_val,optlist=options2)
             f.put_curve('matscaledH',t_val, evo_val,optlist=options2)
@@ -1227,6 +1243,9 @@ class Simulation:
 
         self.lp_list = []
 
+
+        self.flush_freq = model.flush_freq
+
         self.flush_i0 = []
         self.flush_t = []
         self.flush_a = []
@@ -1234,6 +1253,7 @@ class Simulation:
         self.flush_H = []
         self.flush_rho = []
         self.flush_pres = []
+        self.flush_eq_state = []
 
         self.fried_1 = []
         self.k_error = []
@@ -1943,7 +1963,8 @@ class Evolution:
 def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
                   corr_kernel, cuda_param_sc, cuda_sc_args,
                   print_Q, print_w=False, flush=True):
-    "This function updates the energy density and the pressure fields."
+    """This function updates the energy density and the pressure fields.
+     and various other variables."""
 
     a = sim.a
     a_in = sim.a_in
@@ -2068,6 +2089,7 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
         
         sim.flush_rho.append(rho_tot)
         sim.flush_pres.append(pres_tot)
+        sim.flush_eq_state.append(pres_tot/rho_tot)
 
         sim.fried_1.append(Fried_1)
         sim.k_error.append(num_error_rel)
@@ -2087,10 +2109,14 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
         sim.lp_list.append(lp)
 
     if print_Q == True:
+        #values = [i0, Fried_1, num_error_rel, lat.m*sim.t, sim.a,
+        #          p/VL]
+        #print ('i0 {0} rho-error {1:5} k/(a^2H^2) {2:5} t [1/m] {3:5}'+
+        #       ' a {4:5} p/VL {5:5}').format(*values)
         values = [i0, Fried_1, num_error_rel, lat.m*sim.t, sim.a,
-                  p/VL]
+                  sim.H/lat.m]
         print ('i0 {0} rho-error {1:5} k/(a^2H^2) {2:5} t [1/m] {3:5}'+
-               ' a {4:5} p/VL {5:5}').format(*values)
+               ' a {4:5} H/m {5:5}').format(*values)
 
     if print_w:
         print 'Ω_field {0}, Ω_γ {1}, Ω_m {2}'.format(omega_f,
