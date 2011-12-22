@@ -28,14 +28,14 @@ class Model:
         #self.m2f1 = (1.004987562112089e-09)**2
         #self.m2f1 = (5e-10)**2#1e-22#self.m**2.#
         #self.m2f1 = (1e-11)**2#1e-22#self.m**2.#
-        self.m2f1 = 1e-19
+        self.m2f1 = 1e-16
         self.m2f2 = 0.0
         #self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
         self.m2f1_old = (1e-9)**2
 
         "Coupling strengths:"
-        self.g2 = 1e-8
-        self.lamb2 = 1e-7#2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#
+        self.g2 = 1e-4
+        self.lamb2 = 0.0#1e-7#2*(self.m2f1_old-self.m2f1)/self.f10**2#0.0#
 
         "Radiation field:"
         self.lamb = 1.0e-16
@@ -82,8 +82,8 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        #self.dtau = 1./(5000*self.m)
-        self.dtau = 2*1./(1000*self.m)
+        self.dtau = 1./(5000*self.m)
+        #self.dtau = 2./(1000*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
@@ -127,7 +127,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to save data:"
-        self.flush_freq = 256#*120
+        self.flush_freq = 4*256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
@@ -205,4 +205,4 @@ class Model:
             self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
             self.superfolderQ = True
-            self.saveQ = False
+            self.saveQ = True

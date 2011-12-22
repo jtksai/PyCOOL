@@ -83,12 +83,7 @@ class Model:
         "Initial and final times:"
         self.t_in = 0.
         self.t_fin = 5000./self.m
-
         self.t_fin_hom = 5000./self.m
-
-        "How frequently to save data:"
-        self.flush_freq = 4*1024
-        self.flush_freq_hom = 128*20
 
         "Set if to use linearized evolution:"
         self.lin_evo = False
@@ -99,13 +94,28 @@ class Model:
         "Set True to solve non-linearized evolution:"
         self.evoQ = True
 
-        """Whether to do non-Gaussianity calculations
-           (this disables post-processing):"""
-        self.nonGaussianityQ = False
+        """Whether to do curvature perturbation (zeta) calculations
+           (this disables post-processing). Also disables evoQ:"""
+        self.zetaQ = True#False#
+
+        "The reference value at which curvature perturbation is calculated:"
+        self.H_ref = 1e-12
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
+        "How frequently to save data:"
+        self.flush_freq = 4*1024
+        self.flush_freq_hom = 128*20
+
+        "If True write to file:"
+        self.saveQ = True#False#
+
+        "If True make a superfolder that has all the different simulations:"
+        self.superfolderQ = False#True#
+
+        "Name of the superfolder:"
+        self.superfolder = 'zeta_run_1'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -156,21 +166,19 @@ class Model:
            Note that this will also affect the used block size"""
         self.max_reg = None
         
-        "Non-gaussianity related variables:"
-        
-        "Whether to do non-Gaussianity calculations:"
-        self.nonGaussianityQ = False
 
-        "For non-Gaussianty studies disable post-processing by default:"
-        if self.nonGaussianityQ == True:
+        """For curvature perturbation studies disable post-processing
+           by default:"""
+        if self.zetaQ == True:
+            self.evoQ = False
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
+            self.fieldsQ = False
             self.field_rho = False
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120
-            self.flush_freq_hom = 128*8
-
-
+            self.flush_freq = 256*120*100000
+            self.superfolderQ = True
+            self.saveQ = True

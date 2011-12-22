@@ -96,46 +96,48 @@ class Model:
         self.t_fin = 350./self.m
         self.t_fin_hom = 60./self.m
 
+        "Use linearized evolution if True:"
+        self.lin_evo = False#True#
+
+        "Solve homogeneous field evolution if True:"
+        self.homogenQ = False#True#
+
+        "Set True to solve non-linearized evolution:"
+        self.evoQ = True#False#
+
+        """Whether to do non-Gaussianity calculations
+           (this disables post-processing):"""
+        self.zetaQ = False#True#
+
+        "Number of different simulations to run with identical intial values:"
+        self.sim_num = 1
+
         "How frequently to save data:"
         self.flush_freq = 256#*120
         self.flush_freq_hom = 128*8
 
-        "Use linearized evolution if True:"
-        #self.lin_evo = False
-        self.lin_evo = True
+        "If True write to file:"
+        self.saveQ = True#False#
 
-        "Solve homogeneous field evolution if True:"
-        self.homogenQ = False
-        #self.homogenQ = True
+        "If True make a superfolder that has all the different simulations:"
+        self.superfolderQ = False#True#
 
-        "Set True to solve non-linearized evolution:"
-        #self.evoQ = False
-        self.evoQ = True
-
-        """Whether to do non-Gaussianity calculations
-           (this disables post-processing):"""
-        self.nonGaussianityQ = False
-
-        "Number of different simulations to run with identical intial values:"
-        self.sim_num = 2
-
+        "Name of the superfolder:"
+        self.superfolder = 'zeta_run_1'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
-        self.scale = False
+        self.scale = False#True#
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        #self.fieldsQ = False
-        self.fieldsQ = True
+        self.fieldsQ = True#False#
 
         "If spectQ = True calculate spectrums at the end:"
-        #self.spectQ = False
-        self.spectQ = True
+        self.spectQ = True#False#
 
         "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = False
-        #self.distQ = True
+        self.distQ = False#True#
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
@@ -143,36 +145,29 @@ class Model:
         self.spect_m = 'defrost'#'latticeeasy'
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
-        #self.statsQ = False
-        self.statsQ = True
+        self.statsQ = True#False#
 
         """If field_r = True calculate also energy densities of fields
            without interaction terms:"""
-        #self.field_rho = False
-        self.field_rho = True
+        self.field_rho = True#False#
 
         """If field_lpQ = True calculate correlation lengths of
            the energy densities of the fields without interaction terms:"""
-        self.field_lpQ = False
-        #self.field_lpQ = True
+        self.field_lpQ = False#True#
 
         "If deSitter = True include -9H^2/(4m^2) terms in \omega_k^2 term:"
-        #self.deSitterQ = False
-        self.deSitterQ = True
+        self.deSitterQ = True#False#
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False
-        #self.testQ = True
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
-        #self.m2_effQ = False
-        self.m2_effQ = True
+        self.m2_effQ = True#False#
 
         "If csvQ = True writes curves from Silo files to csv files:"
-        #self.csvQ = False
-        self.csvQ = True
+        self.csvQ = True#False#
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
@@ -182,14 +177,18 @@ class Model:
         "Non-gaussianity related variables:"
         
         "For non-Gaussianty studies disable post-processing by default:"
-        if self.nonGaussianityQ == True:
+        if self.zetaQ == True:
+            self.evoQ = False
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
+            self.fieldsQ = False
             self.field_rho = False
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120
+            self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
+            self.superfolderQ = True
+            self.saveQ = True
 

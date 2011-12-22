@@ -98,10 +98,6 @@ class Model:
         "Limit for scale factor in linearized evolution:"
         self.a_limit = 2
 
-        "How frequently to save data:"
-        self.flush_freq = 4*1024
-        self.flush_freq_hom = 128*8
-
         "Set if to use linearized evolution:"
         self.lin_evo = False
 
@@ -110,15 +106,25 @@ class Model:
 
         "Set True to solve non-linearized evolution:"
         self.evoQ = True
-
-        """Whether to do non-Gaussianity calculations
-           (this diables post-processing):"""
-        self.nonGaussianityQ = False
+        """Whether to do curvature perturbation (zeta) calculations
+           (this disables post-processing). Also disables evoQ:"""
+        self.zetaQ = True#False#
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
+        "How frequently to save data:"
+        self.flush_freq = 4*1024
+        self.flush_freq_hom = 128*8
 
+        "If True write to file:"
+        self.saveQ = True#False#
+
+        "If True make a superfolder that has all the different simulations:"
+        self.superfolderQ = False#True#
+
+        "Name of the superfolder:"
+        self.superfolder = 'zeta_run_1'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -161,24 +167,27 @@ class Model:
            also comoving number density."""
         self.m2_effQ = False
 
+        "If csvQ = True writes curves from Silo files to csv files:"
+        self.csvQ = True#False#
+
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
            Note that this will also affect the used block size"""
         self.max_reg = 45
 
-        "Non-gaussianity related variables:"
         
-        "For non-Gaussianty studies disable post-processing by default:"
-        if self.nonGaussianityQ == True:
+        """For curvature perturbation studies disable post-processing
+           by default:"""
+        if self.zetaQ == True:
+            self.evoQ = False
             self.spectQ = False
             self.distQ = False
             self.statsQ = False
+            self.fieldsQ = False
             self.field_rho = False
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120
-            self.flush_freq_hom = 128*8
-
-        
-
+            self.flush_freq = 256*120*100000
+            self.superfolderQ = True
+            self.saveQ = True

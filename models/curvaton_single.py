@@ -99,7 +99,6 @@ class Model:
         "Initial and final times:"
         self.t_in = 0.
         self.t_fin = 500./self.m
-        #self.t_fin = 10./m
         self.t_fin_hom = 50./self.m
 
         "Use linearized evolution if True:"
@@ -119,7 +118,7 @@ class Model:
         self.H_ref = 1e-12
 
         "Number of different simulations to run with identical initial values:"
-        self.sim_num = 30
+        self.sim_num = 20
 
         "How frequently to calculate rho and error:"
         self.flush_freq = 2*256#*120
@@ -132,7 +131,7 @@ class Model:
         self.superfolderQ = False#True#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run_1'
+        self.superfolder = 'zeta_run_3'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -176,14 +175,13 @@ class Model:
         self.m2_effQ = True#False#
 
         "If csvQ = True writes curves from Silo files to csv files:"
-        self.csvQ = False#True#
+        self.csvQ = True#False#
 
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
            Note that this will also affect the used block size"""
         self.max_reg = None
 
-        "Non-gaussianity related variables:"
         
         """For curvature perturbation studies disable post-processing
            by default:"""
@@ -198,6 +196,5 @@ class Model:
             self.testQ = False
             self.m2_effQ = False
             self.flush_freq = 256*120*100000
-            self.flush_freq_hom = 128*8
             self.superfolderQ = True
-            self.saveQ = False
+            self.saveQ = True
