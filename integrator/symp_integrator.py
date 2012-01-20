@@ -1093,6 +1093,53 @@ class Simulation:
                     i += 1
 
             f.close()
+            
+    def flush_zeta(self, lat, f0_in, H_ref, ln_a_array, r_array,
+                   path = 'data'):
+
+        """
+        mode = self.filetype
+
+        if mode == 'silo':
+            import pyvisfile.silo as silo
+
+            filename = path+'/zeta_data_time.'+ str(self.i0) +'.silo'
+
+            f = silo.SiloFile(filename,mode=silo.DB_CLOBBER)
+
+            f0_val = np.asarray(f0_in ,dtype=np.float64)
+            H_ref_val = np.asarray(H_ref ,dtype=np.float64)
+            ln_a_val = np.asarray(ln_a_array ,dtype=np.float64)
+            r_val = np.asarray(r_array ,dtype=np.float64)
+
+
+            f.close()
+        """
+
+        "Write a csv file:"
+
+        import os
+        import csv
+        import numpy as np
+
+        f0_val = np.asarray([f0_in] ,dtype=np.float64)
+        H_ref_val = np.asarray([H_ref] ,dtype=np.float64)
+        ln_a_val = np.asarray(ln_a_array ,dtype=np.float64)
+        r_val = np.asarray(r_array ,dtype=np.float64)
+
+        filename = (path + '/zeta_data' + '.csv')
+
+        csv_file = open(filename,'w')
+        writer = csv.writer(csv_file)
+        writer.writerow(['f0_in','H_ref','ln_a values','r_list values'])
+
+        writer.writerow(f0_val)
+        writer.writerow(H_ref_val)
+        writer.writerow(ln_a_val)
+        writer.writerow(r_val)
+
+        csv_file.close()
+
 
     def read(self, lat, filename):
         "Read data from a hdf5 or a silo file."
@@ -1783,6 +1830,13 @@ class Evolution:
     def evo_step_6(self, lat, V, sim, dt):
         "Integrator order = 6"
         evo_step_6(lat, V, sim, self.H2_kernels, self.H3_kernels,
+                   self.cuda_param_H2, self.cuda_param_H3,
+                   self.cuda_arg, dt)
+        sim.add_to_lists(lat)
+
+    def evo_step_8(self, lat, V, sim, dt):
+        "Integrator order = 8"
+        evo_step_8(lat, V, sim, self.H2_kernels, self.H3_kernels,
                    self.cuda_param_H2, self.cuda_param_H3,
                    self.cuda_arg, dt)
         sim.add_to_lists(lat)

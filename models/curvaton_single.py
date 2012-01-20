@@ -78,7 +78,7 @@ class Model:
 
         "Time step:"
         #self.dtau = 1./(5000*self.m)
-        self.dtau = 2*1./(1000*self.m)
+        self.dtau = 1./(1000*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
@@ -98,7 +98,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 500./self.m
+        self.t_fin = 1000./self.m
         self.t_fin_hom = 50./self.m
 
         "Use linearized evolution if True:"
@@ -118,20 +118,20 @@ class Model:
         self.H_ref = 1e-12
 
         "Number of different simulations to run with identical initial values:"
-        self.sim_num = 20
+        self.sim_num = 50
 
         "How frequently to calculate rho and error:"
-        self.flush_freq = 2*256#*120
+        self.flush_freq = 64#256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
         self.saveQ = True#False#
 
         "If True make a superfolder that has all the different simulations:"
-        self.superfolderQ = False#True#
+        self.superfolderQ = True#False#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run_3'
+        self.superfolder = 'zeta_run_4'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -139,7 +139,7 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = True#False#
+        self.fieldsQ = False#True#
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#
@@ -197,4 +197,5 @@ class Model:
             self.m2_effQ = False
             self.flush_freq = 256*120*100000
             self.superfolderQ = True
-            self.saveQ = True
+            self.saveQ = False#True
+            #self.csvQ = False

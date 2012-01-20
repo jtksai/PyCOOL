@@ -520,6 +520,42 @@ class Postprocess:
             
             k += 1
 
+    def zeta_data_from_file(self, sim, model, f0_list, data_path):
+        "Import zeta data from files:"
+
+        import misc_functions as mf
+        import os
+        import csv
+        import numpy as np
+
+        path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+
+        "List of subfolders:"
+        subf = mf.sub_folders(path)
+
+        zeta_files = []
+
+        for subfolder in subf:
+            zeta_files.append(mf.files_in_folder(subfolder,
+                                                 filetype='csv',
+                                                 sort=False)[0])
+
+        sim.ln_a_list = []
+        sim.r_list = []
+
+        for zeta_file in zeta_files:
+            csv_file = open(zeta_file,'r')
+            names=csv_file.next()
+
+            f0_in = float(csv_file.next())
+            H_ref = float(csv_file.next())
+            ln_arr = np.fromstring(csv_file.next(), dtype=np.float64, sep=',')
+            r_arr = np.fromstring(csv_file.next(), dtype=np.float64, sep=',')
+
+            sim.ln_a_list.append([f0_in,H_ref,ln_arr])
+            sim.r_list.append([f0_in,H_ref,r_arr])
+        
+   
     def calc_zeta(self, sim, model, f0_list, field_i, r_decay, data_path):
         """Calculates the curvature perturbation from the simulation data
            and writes the results to file. Note that this method is based on
@@ -579,20 +615,30 @@ class Postprocess:
         sim.dr_std = [np.std(x) for x in dr]
         sim.zeta_std =  [np.std(x) for x in zeta_full]
 
+        "Standard errors:"
+        sim.dln_a_ste = [np.std(x)/np.sqrt(len(x)) for x in dln_a]
+        sim.r_ste = [np.std(x)/np.sqrt(len(x)) for x in r]
+        sim.dr_ste = [np.std(x)/np.sqrt(len(x)) for x in dr]
+        sim.zeta_ste =  [np.std(x)/np.sqrt(len(x)) for x in zeta_full]
+
 
         "Numpy lists:"
         f0_val = np.asarray(f0_values, dtype=np.float64)
         zeta_mean_val = np.asarray(sim.zeta_mean, dtype=np.float64)
         zeta_std_val = np.asarray(sim.zeta_std, dtype=np.float64)
+        zeta_ste_val = np.asarray(sim.zeta_ste, dtype=np.float64)
 
         dln_a_mean_val = np.asarray(sim.dln_a_mean, dtype=np.float64)
         dln_a_std_val = np.asarray(sim.dln_a_std, dtype=np.float64)
+        dln_a_ste_val = np.asarray(sim.dln_a_ste, dtype=np.float64)
 
         r_mean_val = np.asarray(sim.r_mean, dtype=np.float64)
         r_std_val = np.asarray(sim.r_std, dtype=np.float64)
+        r_ste_val = np.asarray(sim.r_ste, dtype=np.float64)
 
         dr_mean_val = np.asarray(sim.dr_mean, dtype=np.float64)
         dr_std_val = np.asarray(sim.dr_std, dtype=np.float64)
+        dr_ste_val = np.asarray(sim.dr_ste, dtype=np.float64)
 
         "Write to file (currently only silo):"
         mode = sim.filetype
@@ -607,12 +653,16 @@ class Postprocess:
 
             f.put_curve('zeta_mean',f0_val,zeta_mean_val)
             f.put_curve('zeta_std',f0_val,zeta_std_val)
+            f.put_curve('zeta_ste',f0_val,zeta_ste_val)
             f.put_curve('dln_a_mean',f0_val,dln_a_mean_val)
             f.put_curve('dln_a_std',f0_val,dln_a_std_val)
+            f.put_curve('dln_a_ste',f0_val,dln_a_ste_val)
             f.put_curve('r_mean',f0_val,r_mean_val)
             f.put_curve('r_std',f0_val,r_std_val)
+            f.put_curve('r_ste',f0_val,r_ste_val)
             f.put_curve('dr_mean',f0_val,dr_mean_val)
             f.put_curve('dr_std',f0_val,dr_std_val)
+            f.put_curve('dr_ste',f0_val,dr_ste_val)
 
 
         "Write a csv file:"
@@ -621,16 +671,22 @@ class Postprocess:
 
         csv_file = open(filename,'w')
         writer = csv.writer(csv_file)
-        writer.writerow(['f0_values','zeta_mean','zeta_std','dln_a_mean',
-                         'dln_a_std','r_mean','r_std','dr_mean','dr_std'])
+        writer.writerow(['f0_values','zeta_mean','zeta_std','zeta_ste',
+                         'dln_a_mean','dln_a_std','dln_a_ste',
+                         'r_mean','r_std','r_ste','dr_mean','dr_std','dr_ste'])
 
         writer.writerow(f0_val)
         writer.writerow(zeta_mean_val)
         writer.writerow(zeta_std_val)
+        writer.writerow(zeta_ste_val)
         writer.writerow(dln_a_mean_val)
         writer.writerow(dln_a_std_val)
+        writer.writerow(dln_a_ste_val)
         writer.writerow(r_mean_val)
         writer.writerow(r_std_val)
+        writer.writerow(r_ste_val)
         writer.writerow(dr_mean_val)
         writer.writerow(dr_std_val)
+        writer.writerow(dr_ste_val)
         csv_file.close()
+

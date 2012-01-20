@@ -147,17 +147,11 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
         solve_non_linear(lat, V, sim, evo, postp, model, data_folder,
                          order, endQ, print_Q, print_w, flush)
             
-        #evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
-        
-        #data_file = sim.flush(lat, path = data_folder, save_evo = False)
-
         i0_sum += sim.i0
 
-        #"Calculate spectrums and statistics of final values:"
-        #if lat.postQ:
-            #postp.process_fields(lat, V, sim, data_file)
-
         if model.zetaQ:
+
+            #data_file = sim.flush(lat, data_folder)
 
             #These might have to be edited for different models:"
             "Calculate ln(a) and omega_curv at H_ref:"
@@ -165,16 +159,9 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
                              np.log(sim.flush_a))
             ln_a_list.append(ln_a)
 
-            #r = [np.interp(-np.log(model.H_ref),-np.log(sim.flush_H),
-            #              field.omega_list) for field in sim.fields]
-
             r = np.interp(-np.log(model.H_ref),-np.log(sim.flush_H),
                           sim.fields[0].omega_list)
             r_list.append(r)
-
-            #"Write these into a csv file:"
-            #zeta_res = np.array([sim.fields[0].f0_in,model.H_ref,ln_a,r])
-            #write_zeta_result(data_path, zeta_res)
 
         "Re-initialize system:"
         if model.sim_num > 1 and i < model.sim_num:
@@ -189,8 +176,15 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
 
     if model.zetaQ:
 
-        sim.ln_a_list.append([sim.fields[0].f0_in,model.H_ref,ln_a_list])
-        sim.r_list.append([sim.fields[0].f0_in,model.H_ref,r_list])
+        ln_a_array = [sim.fields[0].f0_in,model.H_ref,ln_a_list]
+        r_list_array = [sim.fields[0].f0_in,model.H_ref,r_list]
+
+        sim.ln_a_list.append(ln_a_array)
+        sim.r_list.append(r_list_array)
+
+        sim.flush_zeta(lat, sim.fields[0].f0_in, model.H_ref,
+                       ln_a_list, r_list, data_path)
+        
 
     "Synchronize:"
     end.record()
@@ -235,7 +229,6 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             "Calculate spectrums and statistics of final values:"
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
-
 
         elif order == 4:
             "Solve the non-linear evolution:"
@@ -316,17 +309,20 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
         
         if order == 2:
             "Solve the non-linear evolution:"
-            while (sim.H > 0.99*model.H_ref):
-                if sim.H < 1.01*model.H_ref:
-                    sim.flush_freq = 2
-                if (sim.i0%(sim.flush_freq)==0):
-                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
-                    if model.saveQ:
-                        data_file = sim.flush(lat, path)
+            while (sim.H > 1.01*model.H_ref):
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_2(lat, V, sim, lat.dtau)
 
-                    "Calculate spectrums and statistics:"
-                    if lat.postQ:
-                        postp.process_fields(lat, V, sim, data_file)
+            while (sim.H > 0.99*model.H_ref):
+                if (sim.i0%2 == 0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                if model.saveQ:
+                    data_file = sim.flush(lat, path)
+
+                "Calculate spectrums and statistics:"
+                if lat.postQ:
+                    postp.process_fields(lat, V, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -343,17 +339,20 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
 
         elif order == 4:
             "Solve the non-linear evolution:"
-            while (sim.H > 0.99*model.H_ref):
-                if sim.H < 1.01*model.H_ref:
-                    sim.flush_freq = 2
-                if (sim.i0%(sim.flush_freq)==0):
-                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
-                    if model.saveQ:
-                        data_file = sim.flush(lat, path)
+            while (sim.H > 1.01*model.H_ref):
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_4(lat, V, sim, lat.dtau)
 
-                    "Calculate spectrums and statistics:"
-                    if lat.postQ:
-                        postp.process_fields(lat, V, sim, data_file)
+            while (sim.H > 0.99*model.H_ref):
+                if (sim.i0%2 == 0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                if model.saveQ:
+                    data_file = sim.flush(lat, path)
+
+                "Calculate spectrums and statistics:"
+                if lat.postQ:
+                    postp.process_fields(lat, V, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -370,17 +369,20 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
 
         elif order == 6:
             "Solve the non-linear evolution:"
-            while (sim.H > 0.99*model.H_ref):
-                if sim.H < 1.01*model.H_ref:
-                    sim.flush_freq = 2
-                if (sim.i0%(sim.flush_freq)==0):
-                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
-                    if model.saveQ:
-                        data_file = sim.flush(lat, path)
+            while (sim.H > 1.01*model.H_ref):
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_6(lat, V, sim, lat.dtau)
 
-                    "Calculate spectrums and statistics:"
-                    if lat.postQ:
-                        postp.process_fields(lat, V, sim, data_file)
+            while (sim.H > 0.99*model.H_ref):
+                if (sim.i0%2 == 0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                if model.saveQ:
+                    data_file = sim.flush(lat, path)
+
+                "Calculate spectrums and statistics:"
+                if lat.postQ:
+                    postp.process_fields(lat, V, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -397,17 +399,20 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
 
         elif order == 8:
             "Solve the non-linear evolution:"
-            while (sim.H > 0.99*model.H_ref):
-                if sim.H < 1.01*model.H_ref:
-                    sim.flush_freq = 2
-                if (sim.i0%(sim.flush_freq)==0):
-                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
-                    if model.saveQ:
-                        data_file = sim.flush(lat, path)
+            while (sim.H > 1.01*model.H_ref):
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_8(lat, V, sim, lat.dtau)
 
-                    "Calculate spectrums and statistics:"
-                    if lat.postQ:
-                        postp.process_fields(lat, V, sim, data_file)
+            while (sim.H > 0.99*model.H_ref):
+                if (sim.i0%2 == 0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                if model.saveQ:
+                    data_file = sim.flush(lat, path)
+
+                "Calculate spectrums and statistics:"
+                if lat.postQ:
+                    postp.process_fields(lat, V, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"

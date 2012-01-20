@@ -573,12 +573,33 @@ def data_folders(path=None):
 
     folders_l = []
     for dirname, dirnames, filenames in os.walk(path):
+        tmp = []
+        for subdirname in dirnames:
+            #folders_l.append(os.path.join(dirname, subdirname))
+            tmp.append(os.path.join(dirname, subdirname))
+        folders_l.append(tmp)
+
+    return folders_l
+
+#for item in os.listdir(data_path):
+#	if os.path.isdir(os.path.join(data_path, item)):
+#		print item
+
+def sub_folders(path=None):
+    "Give a list of possible data folders:"
+    import os
+
+    if path == None:
+        path = os.getcwd() + '/data'
+
+    folders_l = []
+    for dirname, dirnames, filenames in os.walk(path):
         for subdirname in dirnames:
             folders_l.append(os.path.join(dirname, subdirname))
 
     return folders_l
 
-def files_in_folder(path=None, filetype='silo'):
+def files_in_folder(path=None, filetype='silo', sort = True):
     "Give a list of sorted filenames in a data folder:"
     import os
 
@@ -591,7 +612,8 @@ def files_in_folder(path=None, filetype='silo'):
         if filetype in filename:
             files.append(path + '/' + filename)
 
-    files.sort(key=sort_func)
+    if sort:
+        files.sort(key=sort_func)
 
     return files
 

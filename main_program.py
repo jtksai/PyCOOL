@@ -107,8 +107,10 @@ if sim.i0 != 0:
 
 if model.zetaQ:
 
+    r_decay = 0.0114181
+
     "List of different homogeneous initial values for fields:"
-    f0_list = [[model.f10 + i/20.*model.delta_f10/2.] for i in xrange(-20,21)]
+    f0_list = [[model.f10 + i/20.*model.delta_f10/2.] for i in xrange(-1,2)]
 
     for fields0 in f0_list:
         solv.reinit(lat, V, sim, evo, model, model.a_in, fields0, model.pis0)
@@ -120,7 +122,7 @@ if model.zetaQ:
 
         sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
 
-    postp.calc_zeta(sim, model, f0_list, 1, 0.001, data_path)
+    postp.calc_zeta(sim, model, f0_list, 1, r_decay, data_path)
 
 
 
