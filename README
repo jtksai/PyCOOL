@@ -7,7 +7,7 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 Please cite arXiv:
 if you use this code in your research.
-See also http://www.physics.utu.fi/theory/particlecosmology/pycool/
+See also http://www.physics.utu.fi/tiedostot/theory/particlecosmology/pycool/
 
 I have done my best to add comments and info texts into different
 functions in the Python and CUDA codes in order to make the program
@@ -239,7 +239,7 @@ These include:
  - field spectrum (S_k in Silo output)
  - number density spectrum (n_k in Silo output)
  - energy density spectrum (rho_k in Silo output)
- - effective mass squared of the field(s) (m2_eff in Silo output)
+ - effective mass of the field(s) (m_eff in Silo output)
  - comoving number density (n_cov in Silo output)
  - the fraction of particles in relativistic regime (n_rel in Silo output)
  - empirical CDF and PDF from energy densities (rho_CDF and rho_PDF respectively)
@@ -289,7 +289,7 @@ USE_SILO = True
 
 Jani Sainio
 jani.sainio@utu.fi
-http://www.physics.utu.fi/theory/particlecosmology/pycool/
+http://www.physics.utu.fi/tiedostot/theory/particlecosmology/pycool/
 Department of Physics and Astronomy
 University of Turku
 

@@ -181,4 +181,4 @@ class Model:
             self.m2_effQ = False
             self.flush_freq = 256*120*100000
             self.superfolderQ = True
-            self.saveQ = True
+            self.saveQ = False

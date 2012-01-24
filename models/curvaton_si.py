@@ -205,4 +205,4 @@ class Model:
             self.flush_freq = 256*120*100000
             self.flush_freq_hom = 128*8
             self.superfolderQ = True
-            self.saveQ = True
+            self.saveQ = False

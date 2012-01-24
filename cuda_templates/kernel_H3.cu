@@ -5,10 +5,10 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 Please cite arXiv:
 if you use this code in your research.
-See also http://www.physics.utu.fi/theory/particlecosmology/ .
+See also http://www.physics.utu.fi/tiedostot/theory/particlecosmology/pycool/ .
 
 Part of this code adapted from CUDAEASY
-http://www.physics.utu.fi/theory/particlecosmology/cudaeasy/
+http://www.physics.utu.fi/tiedostot/theory/particlecosmology/cudaeasy/
 (See http://arxiv.org/abs/0911.5692 for more information.),
 LATTICEEASY
 http://www.science.smith.edu/departments/Physics/fstaff/gfelder/latticeeasy/
