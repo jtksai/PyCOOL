@@ -85,10 +85,10 @@ class Model:
         #self.dtau_hom = 1./(1000*self.m)
 
         "Lattice side length:"
-        self.L = 5./6./self.m
+        self.L = 5./3./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 64
+        self.n = 128
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -131,7 +131,7 @@ class Model:
         self.superfolderQ = True#False#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run_4'
+        self.superfolder = 'zeta_run_5'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""

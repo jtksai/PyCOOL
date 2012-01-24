@@ -107,10 +107,11 @@ if sim.i0 != 0:
 
 if model.zetaQ:
 
-    r_decay = 0.0114181
+    #r_decay = 0.0114181
+    r_decay = 0.0550699
 
     "List of different homogeneous initial values for fields:"
-    f0_list = [[model.f10 + i/20.*model.delta_f10/2.] for i in xrange(-1,2)]
+    f0_list = [[model.f10 + i/20.*model.delta_f10/2.] for i in xrange(-20,21)]
 
     for fields0 in f0_list:
         solv.reinit(lat, V, sim, evo, model, model.a_in, fields0, model.pis0)

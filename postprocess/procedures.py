@@ -520,15 +520,23 @@ class Postprocess:
             
             k += 1
 
-    def zeta_data_from_file(self, sim, model, f0_list, data_path):
-        "Import zeta data from files:"
+    def zeta_data_from_file(self, sim, model, f0_list, data_path,
+                            root = False):
+        """Import zeta data from files:"
+           Note when importing zeta data if root = False the program
+           assumes that data_path is of the default form with the
+           time signature included. Set root to True if data_path
+           is the root of zeta data folders."""
 
         import misc_functions as mf
         import os
         import csv
         import numpy as np
 
-        path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+        if root:
+            path = data_path
+        else:
+            path = os.path.abspath(os.path.join(data_path, os.path.pardir))
 
         "List of subfolders:"
         subf = mf.sub_folders(path)
@@ -554,9 +562,13 @@ class Postprocess:
 
             sim.ln_a_list.append([f0_in,H_ref,ln_arr])
             sim.r_list.append([f0_in,H_ref,r_arr])
-        
+
+        "Sort lists:"
+        sim.ln_a_list.sort()
+        sim.r_list.sort()
    
-    def calc_zeta(self, sim, model, f0_list, field_i, r_decay, data_path):
+    def calc_zeta(self, sim, model, f0_list, field_i, r_decay, data_path,
+                  root=False):
         """Calculates the curvature perturbation from the simulation data
            and writes the results to file. Note that this method is based on
            article 'Non-Gaussianity from resonant curvaton decay'
@@ -571,7 +583,10 @@ class Postprocess:
         import csv
         import numpy as np
 
-        path = os.path.abspath(os.path.join(data_path, os.path.pardir))
+        if root:
+            path = data_path
+        else:
+            path = os.path.abspath(os.path.join(data_path, os.path.pardir))
 
         i = field_i - 1
 
@@ -593,10 +608,12 @@ class Postprocess:
 
 
         "\delta ln(a) = ln(a)|_{H_ref}-ln(a*)|_{H_ref}"
-        dln_a = ln_a - ln_a[index]
+        ln_a_mean = np.mean(ln_a[index])
+        dln_a = ln_a - ln_a_mean
 
         "\delta r = r|_{H_ref} - r*|_{H_ref}"
-        dr = r-r[index]
+        r_mean = np.mean(r[index])
+        dr = r-r_mean
         
         "Full zeta, i.e. zeta at the different realizations:"
         zeta_full = dln_a + 0.25*(r_decay/r_ref_ave - 1.)*dr
