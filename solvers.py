@@ -151,8 +151,6 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
 
         if model.zetaQ:
 
-            #data_file = sim.flush(lat, data_folder)
-
             #These might have to be edited for different models:"
             "Calculate ln(a) and omega_curv at H_ref:"
             ln_a = np.interp(-np.log(model.H_ref),-np.log(sim.flush_H),

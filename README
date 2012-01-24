@@ -168,8 +168,8 @@ includes a simple info file that tells basic information about the model
 used to generate the data. These include the initial values and
 the potential functions.
 
-During the simulation PyCOOL can also calculate various spectrums used in
-LatticeEasy and Defrost that are written into the generated SILO files.
+During the simulation PyCOOL can also calculate various spectra used previously
+in LatticeEasy and Defrost that are written into the generated SILO files.
 In VisIt these are available under Add -> Curve. See section 5 for details.
 
 ------------------------------------------------------
@@ -253,8 +253,37 @@ is clearly wrong please submit this to the issues page at github and/or create
 a functioning fork.
 
 ------------------------------------------------------
+6 Curvature perturbation \zeta
 
-6 To Do list/Improvements
+To calculate the curvature perturbation \zeta zetaQ should be set to True in the model file.
+It is also recommended to switch off all the post-processing functions and saveQ should be set to
+False (See for example curvaton_single.py in models folder). The number of simulations to run
+with the same initial values is controlled by sim_num parameter in the used model. superfolderQ
+should be set to True so that the curvature perturbation simulation data is stored in the same folder.
+The name of this folder is controlled by superfolder parameter in the model file. The range of
+the homogeneous initial field values over which the calculations are performed is determined by
+fields0 list in the main_program.py. This uses delta_f10 parameter from the model which has been
+included only with the curvaton model files. How this parameter is calulated has been explained
+in 'Non-Gaussianity from resonant curvaton decay' http://arxiv.org/abs/0909.4535v3 on page 13
+starting from equation (55).
+
+N.B. The method that is currently used has been explained in 'Non-Gaussianity from resonant
+curvaton decay' http://arxiv.org/abs/0909.4535v3 and we have applied it only to the curvaton model.
+Therefore when applying this to a different model the way \zeta is calculated might be quite
+different. The relevant files that might have to be edited are main_program.py (f0list and r_decay),
+procedures.py in postprocess folder (calc_zeta function) and solvers.py (run_non_linear function
+starting from line 154 onwards).
+
+N.B.2 If for some reason the calculation of curvature perturbation of zeta has terminated
+before completing it is possible to continue the calculations from the last completed
+homogeneous initial value onwards. All the completed values should be removed from f0list
+(Check info.txt files from the data folders for the last values) and after the remaining
+f0_list values have been also computed zeta_data_from_file function in the postprocess
+procedures can read the necessary data from zeta_data.csv files stored in the used superfolder.
+
+------------------------------------------------------
+
+7 To Do list/Improvements
 
 - Multi-GPU support should be included. This might however take some
 work due to the periodicity of the lattice.

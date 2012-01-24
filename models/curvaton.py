@@ -43,6 +43,9 @@ class Model:
         self.lamb = 1.0e-20
         self.psi = np.sqrt(self.mpl)
 
+        "Variance of f10 within our current Hubble volume:"
+        self.delta_f10 = np.sqrt(4/(9*np.pi**2)*self.lamb*60**3.)
+
         self.fields0 = [self.f10, self.f20]
         self.pis0 = [self.df1_dt0, self.df2_dt0]
 
