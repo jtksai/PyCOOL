@@ -48,7 +48,7 @@ class Model:
         self.fields0 = [self.f10]
         self.pis0 = [self.df1_dt0]
 
-        self.k_test = np.sqrt(3*self.lamb2*self.f10**2)/self.m
+        self.k_test = np.sqrt(1.6*self.lamb2*self.f10**2)/self.m
         self.dom_test = np.sqrt(self.lamb2/self.m2f1)*self.f10
         #self.q = self.g2*self.f10**2/(4*self.m2f1)
 
@@ -85,10 +85,10 @@ class Model:
         #self.dtau_hom = 1./(1000*self.m)
 
         "Lattice side length:"
-        self.L = 5./3./self.m
+        self.L = 5./8./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 128
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -112,13 +112,13 @@ class Model:
 
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
-        self.zetaQ = True#False#
+        self.zetaQ = False#True#
 
         "The reference value at which curvature perturbation is calculated:"
-        self.H_ref = 1e-12
+        self.H_ref = 4e-13
 
         "Number of different simulations to run with identical initial values:"
-        self.sim_num = 50
+        self.sim_num = 1
 
         "How frequently to calculate rho and error:"
         self.flush_freq = 64#256#*120
@@ -128,10 +128,10 @@ class Model:
         self.saveQ = True#False#
 
         "If True make a superfolder that has all the different simulations:"
-        self.superfolderQ = True#False#
+        self.superfolderQ = False#True#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run_5'
+        self.superfolder = 'zeta_run_6'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -168,7 +168,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False#True#
+        self.testQ = True#False#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""

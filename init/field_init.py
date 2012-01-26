@@ -78,6 +78,7 @@ def sample_defrost_cpu(lat, func, gamma, m2_eff):
     Fk = np.fft.rfftn(tmp)
     
     if lat.test==True:
+        print'Testing mode on! Set testQ to False to disable this.\n'
         np.random.seed(1)
         
     rr1 = np.random.normal(size=Fk.shape) + np.random.normal(size=Fk.shape)*1j
@@ -145,6 +146,7 @@ def sample_defrost_cpu2(lat, func, gamma, m2_eff):
     fftw3.destroy_plan(fft2)
     
     if lat.test==True:
+        print'Testing mode on! Set testQ to False to disable this.\n'
         np.random.seed(1)
 
     rr1 = np.random.normal(size=Fk.shape) + np.random.normal(size=Fk.shape)*1j
@@ -213,6 +215,7 @@ def sample_defrost_gpu(lat, func, gamma, m2_eff):
     fft.fft(tmp_gpu, Fk_gpu, plan)
     
     if lat.test==True:
+        print'Testing mode on! Set testQ to False to disable this.\n'
         np.random.seed(1)
 
     rr1 = (np.random.normal(size=Fk_gpu.shape)+

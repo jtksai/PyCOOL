@@ -101,7 +101,7 @@ class Model:
 
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
-        self.zetaQ = True#False#
+        self.zetaQ = False#True#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 1e-12

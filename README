@@ -5,7 +5,7 @@ Copyright (C) 2011 Jani Sainio <jani.sainio at utu.fi>
 Distributed under the terms of the GNU General Public License
 http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-Please cite arXiv:
+Please cite http://arxiv.org/abs/1201.5029
 if you use this code in your research.
 See also http://www.physics.utu.fi/tiedostot/theory/particlecosmology/pycool/
 
@@ -22,16 +22,16 @@ Please submit any errors at https://github.com/jtksai/PyCOOL/issues .
 
 PyCOOL is a Python + CUDA program that solves the evolution of interacting
 scalar fields in an expanding universe. PyCOOL uses modern GPUs
-to solve this evolution and make this computation much faster.
+to solve this evolution and to make the computation much faster.
 See http://arxiv.org/abs/0911.5692 for more information on the GPU
 algorithm.
 
-The program has been written in Python language in order to make it really easy
-to adapt the code to different scalar field models. What this means is that in
-ideal situations for a new preheating model only the list of potential
-functions in main_program.py has to be changed with the necessary initial values.
-Everything else should be done automatically. Please see the other model files
-for guidance.
+The program has been written in the Python language in order to make it really
+easy to adapt the code to different scalar field models. What this means is
+that in an ideal situation only a list of potential functions in a model file
+has to be changed to study a new preheating model. Everything else should be
+done automatically. Please see the included model files for guidance on how
+to write a model file.
 
 Files included:
 
@@ -94,10 +94,9 @@ git clone http://git.tiker.net/trees/pyvisfile.git
 
 which will create new folders and download the necessary files.
 Before proceeding it is recommended to create .aksetup-defaults.py file
-in your $HOME folder or in /etc folder. I have included an example of an
-.aksetup-defaults.py file at end of this README. When you have
-the .aksetup-defaults.py file done the next step is to install the python
-libraries by running
+in your $HOME folder or in /etc folder (in Linux). I have included an example
+of an .aksetup-defaults.py file at end of this README. The next step is to
+install the python libraries by running
 
   python setup.py build
   sudo python setup.py install
@@ -105,26 +104,26 @@ libraries by running
 in the downloaded package folders. Further PyCUDA install instructions
 are available in http://wiki.tiker.net/PyCuda/Installation .
 
-The field initialization also uses pyfftw package to calculate DST-II. This can be
-downloaded from https://launchpad.net/pyfftw . Note that there was an error in older
-version of pyfftw that caused an error in DST-II calculations 
+The field initialization also uses pyfftw package to calculate DST-II. This can
+be downloaded from https://launchpad.net/pyfftw . Note that there was an error
+in older version of pyfftw that caused an error in DST-II calculations 
 https://bugs.launchpad.net/pyfftw/+bug/585809 . In newer version this is fixed.
 
 The analytical calculations needed when calculating field potentials and
-potential derivatives are done with SymPy http://sympy.org/ . This can installed
-with easy_install or downloaded from https://github.com/sympy/sympy .
+potential derivatives are done with SymPy http://sympy.org/ . This can be
+installed with easy_install or downloaded from https://github.com/sympy/sympy .
 
-PyCOOL uses then textual templating to write the necessary CUDA files. This is done
-with jinja2 library http://jinja.pocoo.org/docs/ . 'easy_install jinja2' should install
-this library.
+PyCOOL uses then textual templating to write the necessary CUDA files. This is
+done with jinja2 library http://jinja.pocoo.org/docs/ . 'easy_install jinja2'
+should install this library.
 
-The spectrum calculations are done with Cython to speed the calculations (~200 times 
-compared to ordinary Python code). Therefore Cython has to be also installed.
-This can done for example with 'sudo easy_install cython' in Linux.
+The spectrum calculations are done with Cython to speed the calculations
+(~200 times compared to ordinary Python code). Therefore Cython has to be also
+installed. This can done for example with 'sudo easy_install cython' in Linux.
 
-Finally run the compile_libs script that calls 'python setup.py build_ext --inplace'
-to make the calc_spect.pyx into shared library file that the PyCOOL can use to
-calculate the spectrums.
+Finally run the compile_libs script that runs
+'python setup.py build_ext --inplace' to make the calc_spect.pyx into
+a shared library file that the PyCOOL can use to calculate the spectra.
 
 After all these necessary steps the program is ready to be used.
 
@@ -139,11 +138,11 @@ In summary, install
   - pyfftw
   - jinja2
   - VisIt
-  Then run compile_libs script to build the shared library file for the spectrum
-  calculations.
+  Then run compile_libs script to build the shared library file for
+  the spectrum  calculations.
 
-Current version has been tested in Debian Squeeze and Ubuntu 10.04 but it should work
-also in other operating systems.
+Current version has been tested in Debian Squeeze and Ubuntu 10.04 but it
+should work also in other operating systems.
 
 ------------------------------------------------------
 
@@ -151,8 +150,9 @@ also in other operating systems.
 
 Typing 'python main_program.py' runs the code for a specific model that is
 imported from the models directory. The current program prints to the screen
-information of current step number, scale factor, canonical momentum p,
-physical time and numerical error.
+information of current step number, scale factor, Hubble parameter,
+physical time and the numerical error. How frequently these are calculated is
+determined by flush and flush_hom parameters in the model file.
 
 The initial field perturbations are created with the method that was
 also used in Defrost.
@@ -162,21 +162,22 @@ The main program is divided into
  - Non-linear solver that includes a linearized perturbation solver
 
 The program creates a new folder by time stamp in the data folder.
-For large lattices and frequent data saving the generated data can be
-several hundred gigabytes if the fields are also stores. The folder also
-includes a simple info file that tells basic information about the model
-used to generate the data. These include the initial values and
+For large lattices and frequent data writing the generated data can be
+several hundred gigabytes if the fields are also stored. The created folder
+will also include a simple info file that tells basic information about
+the model used to generate the data. These include the initial values and
 the potential functions.
 
-During the simulation PyCOOL can also calculate various spectra used previously
-in LatticeEasy and Defrost that are written into the generated SILO files.
-In VisIt these are available under Add -> Curve. See section 5 for details.
+During a simulation run PyCOOL can also calculate various spectra used
+previously in LatticeEasy and Defrost that are written into the generated SILO
+files. In VisIt these are available under Add -> Curve. See section 5 for
+details.
 
 ------------------------------------------------------
 
 4 Running your own models
 
-The code has been tested with different models.
+The code has been tested with the included models.
 
 In order to simulate your own model create a model file in models folder
 that has the model object and then import this python file in main_program.py.
@@ -184,55 +185,64 @@ that has the model object and then import this python file in main_program.py.
 Possible variables to change/consider include:
  - n controls the number of points per side of lattice
  - L is the length of the side of the lattice
- - mpl is the reduced Planck mass in terms of field 1 mass m=1
- - Mpl is the unreduced Planck mass in terms of field 1 mass m=1
+ - mpl is the reduced Planck mass
+ - Mpl is the unreduced Planck mass
  - number of fields
  - initial field values
  - field potential
-   We've done our best to test the functionality of the program
-   with different potential functions. It might however fail
-   to write CUDA compatible code in some cases.
-   In this case the code in lattice.py and misc_functions.py should
-   be studied more carefully to understand why the program fails.
-   One cause of errors is exponentiation e.g. terms of the form f**n.
-   Currently the program uses format_to_cuda function to write
-   these terms in the form f**n = f*f*···*f. The code is also able to
-   write powers of functions into suitable CUDA form,
-   e.g. Cos(f1)**n = Cos(f1)*Cos(f1)*...*Cos(f1). User has to include
-   the function into a power_list in the used model file.
+ - flush_freq determines how frequently to calculate the
+   selected postprocessing functions and to write data to disk if
+   saveQ is True.
+
+We've done our best to test the functionality of the program with different
+potential functions. It might however fail to write CUDA compatible code in
+some cases. In this case the code in lattice.py and misc_functions.py should
+be studied carefully to understand why the program failed. One cause of
+errors is exponentiation e.g. terms of the form f**n. Currently the program
+uses format_to_cuda function (found in misc_functions.py) to write these terms
+open in to form f**n = f*f*···*f. The code is also able to write powers of
+functions into suitable CUDA form,
+e.g. Cos(f1)**n = Cos(f1)*Cos(f1)*...*Cos(f1). User has to include
+the function into a power_list in the used model file.
 
 ------------------------------------------------------
 
 5 Output and Post-processing functions
 
-PyCOOL writes variety of variables into the Silo files during run time. Which of these and how often
-to write are determined in the scalar field model object. Note that the different spectra are
-calculated on the CPU and therefore the data must be transferred from the device to the host memory.
+PyCOOL writes variety of variables into the Silo files during run time. Which
+of these and how often to write are determined in the scalar field model
+object. Note that the different spectra are calculated on the CPU and therefore
+the data must be transferred from the device to the host memory.
 This can significantly hinder the performance of the code.
+
 The variables include:
  - scale factor a
  - Hubble parameter H
- - Comoving horizon 1/(a*H)
+ - Comoving horizon in units of lattice length 1/(a*H)/L
  - field f
  - canonical momentum of field pi
  - energy density rho
- - fractional energy densities of fields rho_field(n)/rho_total (omega_field(n) in Silo output)
- - fractional energy density of the interaction term between fields (omega_int in Silo output)
+ - fractional energy densities of fields rho_field(n)/rho_total (omega_field(n)
+   in Silo output)
+ - fractional energy density of the interaction term between fields (omega_int
+   in Silo output)
  - Absolute and relative numerical errors
- - spatial correlation length of the total energy density (l_p in Silo output) (See Defrost paper
-   for the definition.)
+ - spatial correlation length of the total energy density (l_p in Silo output)
+   (See Defrost paper for the definition.)
 
 When solving homogeneous equations for the fields the program writes
  - scale factor a
  - Hubble parameter H
- - Comoving horizon 1/(a*H)
+ - Comoving horizon in units of lattice length 1/(a*H)/L
  - homogeneous field f
  - homogeneous canonical momentum of field pi
  - energy density rho
-   These are labeled by adding '_hom' at the end of the variable name in Silo output.
+   These are labeled by adding '_hom' at the end of the variable name in Silo
+   output.
  In addition the program writes
- - field_i as a function field_j where i and j label the different fields. This can used to see
-   if the (field_i(t),field_j(t)) space is confined to some area.
+ - field_i as a function field_j where i and j label the different fields. This
+   can be used to see if the (field_i(t),field_j(t)) space is confined to some
+   area.
 
 PyCOOL has also a number of different post-processing functions.
 These include:
@@ -242,44 +252,52 @@ These include:
  - effective mass of the field(s) (m_eff in Silo output)
  - comoving number density (n_cov in Silo output)
  - the fraction of particles in relativistic regime (n_rel in Silo output)
- - empirical CDF and PDF from energy densities (rho_CDF and rho_PDF respectively)
- - skewness and kurtosis of the scalar field(s) (field(n)_skew and field(n)_kurt in Silo output)
+ - empirical CDF and PDF from energy densities (rho_CDF and rho_PDF
+   respectively) (This is still experimental!)
+ - skewness and kurtosis of the scalar field(s) (field(n)_skew and
+   field(n)_kurt in Silo output)
 
-Most of these functions are defined/used in 'Dmitry I. Podolsky et al. : Equation of state and
-Beginning of Thermalization After Preheating' http://arxiv.org/abs/hep-ph/0507096v1 .
+Most of these functions are defined/used in 'Dmitry I. Podolsky et al. :
+Equation of state and Beginning of Thermalization After Preheating'
+http://arxiv.org/abs/hep-ph/0507096v1 .
 
-N.B. These functions have been tested but not thoroughly. If you notice that the output
-is clearly wrong please submit this to the issues page at github and/or create
-a functioning fork.
+N.B. These functions have been tested but not thoroughly. If you notice that
+the output is clearly wrong please submit this to the issues page at github
+and/or create a functioning fork.
 
 ------------------------------------------------------
+
 6 Curvature perturbation \zeta
 
-To calculate the curvature perturbation \zeta zetaQ should be set to True in the model file.
-It is also recommended to switch off all the post-processing functions and saveQ should be set to
-False (See for example curvaton_single.py in models folder). The number of simulations to run
-with the same initial values is controlled by sim_num parameter in the used model. superfolderQ
-should be set to True so that the curvature perturbation simulation data is stored in the same folder.
-The name of this folder is controlled by superfolder parameter in the model file. The range of
-the homogeneous initial field values over which the calculations are performed is determined by
-fields0 list in the main_program.py. This uses delta_f10 parameter from the model which has been
-included only with the curvaton model files. How this parameter is calulated has been explained
-in 'Non-Gaussianity from resonant curvaton decay' http://arxiv.org/abs/0909.4535v3 on page 13
-starting from equation (55).
+To calculate the curvature perturbation \zeta zetaQ should be set to True in
+the model file. It is also recommended to switch off all the post-processing
+functions and saveQ should be set to False (See for example curvaton_single.py
+in models folder). The number of simulations to run with the same initial
+values is controlled by sim_num parameter in the used model object.
+superfolderQ term should be set to True so that all the curvature perturbation
+simulation data is stored in a same folder. The name of this folder is
+controlled by superfolder parameter in the model file.
+The range of the homogeneous initial field values over which the calculations
+are performed is determined by fields0 list in the main_program.py. This uses
+delta_f10 parameter from the model which has been included only with
+the curvaton model files. How this parameter is calculated has been explained
+in 'Non-Gaussianity from resonant curvaton decay'
+http://arxiv.org/abs/0909.4535v3 on page 13 starting from equation (55).
 
-N.B. The method that is currently used has been explained in 'Non-Gaussianity from resonant
-curvaton decay' http://arxiv.org/abs/0909.4535v3 and we have applied it only to the curvaton model.
-Therefore when applying this to a different model the way \zeta is calculated might be quite
-different. The relevant files that might have to be edited are main_program.py (f0list and r_decay),
-procedures.py in postprocess folder (calc_zeta function) and solvers.py (run_non_linear function
-starting from line 154 onwards).
+N.B. The currently used method has been applied only to the curvaton model.
+Therefore when applying this to a different model the way \zeta is calculated
+might be quite different. The relevant files that might have to be edited are
+main_program.py (f0list and r_decay), procedures.py in postprocess folder
+(calc_zeta function) and solvers.py (run_non_linear function starting from
+line 154 onwards).
 
-N.B.2 If for some reason the calculation of curvature perturbation of zeta has terminated
-before completing it is possible to continue the calculations from the last completed
-homogeneous initial value onwards. All the completed values should be removed from f0list
-(Check info.txt files from the data folders for the last values) and after the remaining
-f0_list values have been also computed zeta_data_from_file function in the postprocess
-procedures can read the necessary data from zeta_data.csv files stored in the used superfolder.
+N.B.2 If for some reason the calculation of curvature perturbation of zeta has
+terminated before completion it is possible to continue the calculations from
+the last completed homogeneous initial value onwards. All the completed values
+should be removed from f0list (Check info.txt files from the data folders
+for the last values) and after the remaining f0_list values have been also
+computed zeta_data_from_file function in the postprocess procedures can read
+the necessary data from zeta_data.csv files stored in the used superfolder.
 
 ------------------------------------------------------
 

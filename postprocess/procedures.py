@@ -363,7 +363,7 @@ class Postprocess:
                 c = 1.
                 c1 = 1.0
 
-            c2 = 4*np.pi*lat.dk**(-3.)
+            #c2 = 4*np.pi*lat.dk**(-3.)
 
             t_val = c1*np.asarray(sim.t_write_list,dtype=np.float64)
 
@@ -401,7 +401,7 @@ class Postprocess:
                             c*k_val**2.*field.rho_k)
                 f.put_curve('field'+str(i)+'_k3_rho_k',
                             c*k_val,
-                            c*c2*k_val**3.*field.rho_k)
+                            c*k_val**3.*field.rho_k)
 
                 if lat.m2_eff:
                     m_eff_val = np.sqrt(np.asarray(field.m2_eff_list,
