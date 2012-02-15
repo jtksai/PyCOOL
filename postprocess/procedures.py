@@ -77,6 +77,7 @@ def kernel_pd_gpu_code(lat, V, field_i, write_code=False):
     return SourceModule(f_code.encode( "utf-8" ),
                         options=['-maxrregcount='+lat.reglimit])
 
+
 class Pd_Kernel:
     def __init__(self, lat, V, field_i, write_code=False):
         self.mod = kernel_pd_gpu_code(lat, V, field_i, write_code)
@@ -102,6 +103,7 @@ class Pd_Kernel:
         cuda.memcpy_dtoh(x,self.pc_add[0])
 
 
+
 class Postprocess:
     def __init__(self, lat, V, write_code=True):
 
@@ -116,6 +118,7 @@ class Postprocess:
 
         for kernel in self.pd_kernels:
             kernel.update_d(V.D_coeffs_np)
+            
 
         print "-" * 79
 
@@ -160,14 +163,17 @@ class Postprocess:
                 field.m2_eff = m2_eff
                 field.m2_eff_list.append(m2_eff)
 
-    def calc_spectrum(self, lat, V, sim, method):
+    def calc_spectrum(self, lat, V, sim):
         """Calculate the spectrums of the fields with the methods given in
            LatticeEasy or Defrost:"""
 
         import postprocess.calc_spect as calc
 
+        method = lat.spect_method
+
         a = sim.a
         p = sim.p
+        dk_inv = 1.0/lat.dk
 
         """a_term multiplies Pi_k, p_term F_k and a2_term multiplies
            k**2*dk**2 + a**2*m2_eff term:"""
@@ -198,20 +204,29 @@ class Postprocess:
                 "LatticeEasy spectrums:"
 
                 calc.calc_le(Fk.real, Fk.imag, Pik.real, Pik.imag,
-                         field.W, field.S, field.n_k,
-                         field.rho_k, lat.dk, field.w_k,
+                         field.W, field.S, field.k2_S, field.n_k,
+                         field.rho_k, field.k2_rho_k, lat.dk, field.w_k,
                          a_term, p_term, coeff)
 
                 field.S = np.where(field.W > 0.,
                                (field.S/field.W)/lat.VL**2.,
                                field.S)
 
+                field.k2_S = np.where(field.W > 0.,
+                               (field.k2_S/field.W)/lat.VL**2.,
+                               field.k2_S)
+
                 field.n_k = np.where(field.W > 0.,
                                      field.n_k/field.W,
                                      field.n_k)
+
                 field.rho_k = 1./a*np.where(field.W > 0.,
                                      field.rho_k/field.W,
                                      field.rho_k)
+
+                field.k2_rho_k = 1./a*np.where(field.W > 0.,
+                                       field.k2_rho_k/field.W,
+                                       field.k2_rho_k)
 
                 if lat.m2_eff:
                     """Calculate the total number density of particles and
@@ -247,20 +262,29 @@ class Postprocess:
                 "Defrost spectrums:"
 
                 calc.calc_df(Fk.real, Fk.imag, Pik.real, Pik.imag,
-                         field.W_df, field.S, field.n_k,
-                         field.rho_k, lat.dk, field.w_k,
+                         field.W_df, field.S, field.k2_S, field.n_k,
+                         field.rho_k, field.k2_rho_k, lat.dk, field.w_k,
                          a_term, p_term, coeff)
 
                 field.S = np.where(field.W_df > 0.,
                                (field.S/field.W_df)/lat.VL**2.,
                                field.S)
 
+                field.k2_S = np.where(field.W_df > 0.,
+                               (field.k2_S/field.W_df)/lat.VL**2.,
+                               field.k2_S)
+
                 field.n_k = np.where(field.W_df > 0.,
                                      field.n_k/field.W_df,
                                      field.n_k)
+
                 field.rho_k = 1./a*np.where(field.W_df > 0.,
                                        field.rho_k/field.W_df,
                                        field.rho_k)
+
+                field.k2_rho_k = 1./a*np.where(field.W_df > 0.,
+                                       field.k2_rho_k/field.W_df,
+                                       field.k2_rho_k)
 
                 if lat.m2_eff:
                     """Calculate the total number density of particles and
@@ -291,6 +315,67 @@ class Postprocess:
 
                     field.rho_cov_list.append(rho_cov)
 
+
+
+            if method == 'k2_eff':
+                "LatticeEasy spectrums:"
+
+                calc.calc_spect_k2_eff_le(Fk.real, Fk.imag,
+                                          Pik.real, Pik.imag,
+                                          field.W, field.S, field.k2_S,
+                                          field.n_k, field.rho_k,
+                                          field.k2_rho_k, sim.k2_field,
+                                          lat.dk, dk_inv, field.w_k,
+                                          a_term, p_term, coeff)
+
+                field.S = np.where(field.W > 0.,
+                               (field.S/field.W)/lat.VL**2.,
+                               field.S)
+
+                field.k2_S = np.where(field.W > 0.,
+                               (field.k2_S/field.W)/lat.VL**2.,
+                               field.k2_S)
+
+                field.n_k = np.where(field.W > 0.,
+                                     field.n_k/field.W,
+                                     field.n_k)
+
+                field.rho_k = 1./a*np.where(field.W > 0.,
+                                       field.rho_k/field.W,
+                                       field.rho_k)
+
+                field.k2_rho_k = 1./a*np.where(field.W > 0.,
+                                       field.k2_rho_k/field.W,
+                                       field.k2_rho_k)
+
+                if lat.m2_eff:
+                    """Calculate the total number density of particles and
+                       the fraction of particles in the relativistic
+                       regime. This was explained in section 5.4 Spectra
+                       in the Latticeeasy guide:"""
+                
+                    rel_num = 0.
+                    total_N = 0.
+                    total_rho = 0.
+
+                    "Note that only non-homogeneous modes are included:"
+                    for i in xrange(1,len(field.k_vals)):
+                        if field.k_vals[i] > np.sqrt(field.m2_eff):
+                            rel_num += (field.n_k[i]*field.W[i])
+                        total_N += (field.n_k[i]*field.W[i])
+                        total_rho += (field.rho_k[i]*field.W[i])
+
+                    field.rel_num_list.append(rel_num/total_N)
+
+                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
+
+                    field.n_cov_list.append(n_cov)
+
+                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+
+                    field.rho_cov_list.append(rho_cov)
 
     def calc_dist(self, lat, sim):
         """Calculate empirical CDF and PDF functions from energy densities.
@@ -352,7 +437,11 @@ class Postprocess:
 
             f = silo.SiloFile(filename, create=False, mode=silo.DB_APPEND)
 
-            k_val = np.arange(0,lat.ns)*lat.dk
+            "Range of momentum values:"
+            if lat.k2_effQ:
+                k_val = np.arange(0,sim.k_bins)*lat.dk
+            else:
+                k_val = np.arange(0,lat.ns)*lat.dk
 
             options={}
 
@@ -387,7 +476,7 @@ class Postprocess:
                             c*field.S)
                 f.put_curve('field'+str(i)+'_k2_S_k',
                             c*k_val,
-                            c*k_val**2.*field.S)
+                            c*field.k2_S)
                 f.put_curve('field'+str(i)+'_n_k',
                             c*k_val,
                             c*field.n_k,
@@ -398,7 +487,7 @@ class Postprocess:
                             optlist=options)
                 f.put_curve('field'+str(i)+'_k2_rho_k',
                             c*k_val,
-                            c*k_val**2.*field.rho_k)
+                            c*field.k2_rho_k)
                 f.put_curve('field'+str(i)+'_k3_rho_k',
                             c*k_val,
                             c*k_val**3.*field.rho_k)
@@ -474,10 +563,10 @@ class Postprocess:
 
             f.close()
 
-    def process_fields(self, lat, V, sim, filename, method = 'defrost'):
+    def process_fields(self, lat, V, sim, filename):
 
             if lat.spect:
-                self.calc_spectrum(lat, V, sim, method)
+                self.calc_spectrum(lat, V, sim)
 
             if lat.dist:
                 self.calc_dist(lat, sim)
@@ -621,18 +710,21 @@ class Postprocess:
         sim.zeta_full = zeta_full
 
         "Means values:"
+        sim.ln_a_mean = [np.mean(x) for x in ln_a]
         sim.dln_a_mean = [np.mean(x) for x in dln_a]
         sim.r_mean = [np.mean(x) for x in r]
         sim.dr_mean = [np.mean(x) for x in dr]
         sim.zeta_mean = [np.mean(x) for x in zeta_full]
 
         "Standard deviations:"
+        sim.ln_a_std = [np.std(x) for x in ln_a]
         sim.dln_a_std = [np.std(x) for x in dln_a]
         sim.r_std = [np.std(x) for x in r]
         sim.dr_std = [np.std(x) for x in dr]
         sim.zeta_std =  [np.std(x) for x in zeta_full]
 
         "Standard errors:"
+        sim.ln_a_ste = [np.std(x)/np.sqrt(len(x)) for x in ln_a]
         sim.dln_a_ste = [np.std(x)/np.sqrt(len(x)) for x in dln_a]
         sim.r_ste = [np.std(x)/np.sqrt(len(x)) for x in r]
         sim.dr_ste = [np.std(x)/np.sqrt(len(x)) for x in dr]
@@ -644,6 +736,10 @@ class Postprocess:
         zeta_mean_val = np.asarray(sim.zeta_mean, dtype=np.float64)
         zeta_std_val = np.asarray(sim.zeta_std, dtype=np.float64)
         zeta_ste_val = np.asarray(sim.zeta_ste, dtype=np.float64)
+
+        ln_a_mean_val = np.asarray(sim.ln_a_mean, dtype=np.float64)
+        ln_a_std_val = np.asarray(sim.ln_a_std, dtype=np.float64)
+        ln_a_ste_val = np.asarray(sim.ln_a_ste, dtype=np.float64)
 
         dln_a_mean_val = np.asarray(sim.dln_a_mean, dtype=np.float64)
         dln_a_std_val = np.asarray(sim.dln_a_std, dtype=np.float64)
@@ -671,6 +767,9 @@ class Postprocess:
             f.put_curve('zeta_mean',f0_val,zeta_mean_val)
             f.put_curve('zeta_std',f0_val,zeta_std_val)
             f.put_curve('zeta_ste',f0_val,zeta_ste_val)
+            f.put_curve('ln_a_mean',f0_val,dln_a_mean_val)
+            f.put_curve('ln_a_std',f0_val,dln_a_std_val)
+            f.put_curve('ln_a_ste',f0_val,dln_a_ste_val)
             f.put_curve('dln_a_mean',f0_val,dln_a_mean_val)
             f.put_curve('dln_a_std',f0_val,dln_a_std_val)
             f.put_curve('dln_a_ste',f0_val,dln_a_ste_val)
@@ -681,6 +780,7 @@ class Postprocess:
             f.put_curve('dr_std',f0_val,dr_std_val)
             f.put_curve('dr_ste',f0_val,dr_ste_val)
 
+            f.close()
 
         "Write a csv file:"
         filename = (path + '/zeta_results'+ 'r_dec_' + str(r_decay)
@@ -689,6 +789,7 @@ class Postprocess:
         csv_file = open(filename,'w')
         writer = csv.writer(csv_file)
         writer.writerow(['f0_values','zeta_mean','zeta_std','zeta_ste',
+                         'ln_a_mean','ln_a_std','ln_a_ste',
                          'dln_a_mean','dln_a_std','dln_a_ste',
                          'r_mean','r_std','r_ste','dr_mean','dr_std','dr_ste'])
 
@@ -696,6 +797,9 @@ class Postprocess:
         writer.writerow(zeta_mean_val)
         writer.writerow(zeta_std_val)
         writer.writerow(zeta_ste_val)
+        writer.writerow(ln_a_mean_val)
+        writer.writerow(ln_a_std_val)
+        writer.writerow(ln_a_ste_val)
         writer.writerow(dln_a_mean_val)
         writer.writerow(dln_a_std_val)
         writer.writerow(dln_a_ste_val)
@@ -706,4 +810,236 @@ class Postprocess:
         writer.writerow(dr_std_val)
         writer.writerow(dr_ste_val)
         csv_file.close()
+
+
+    def tensorTT_ij(self,lat, sim, u_mat,i,j):
+        """Calculate the traceless-tranverse part of tensor perturbation
+           component h_{ij}:"""
+
+        if i == j:
+            delta = 1.0
+        else:
+            delta = 0.0
+
+        res = (u_mat[i][j] + 1./2.*(sim.k_vec[i]*sim.k_vec[j] -
+               delta*np.ones(lat.dims_k,dtype = lat.prec_real))*
+               (u_mat[0][0]+u_mat[1][1]+u_mat[2][2]) +
+               01./2.*(sim.k_vec[i]*sim.k_vec[j] +
+               delta*np.ones(lat.dims_k,dtype = lat.prec_real))*
+               (sim.kx**2*u_mat[0][0] + sim.ky**2*u_mat[1][1] +
+                sim.kz**2*u_mat[2][2] +
+                2*(sim.kx*sim.ky*u_mat[0][1] +
+                   sim.kx*sim.kz*u_mat[0][2] +
+                   sim.ky*sim.kz*u_mat[1][2])) -
+               sim.k_vec[i]*(sim.k_vec[0]*u_mat[j][0]+
+                             sim.k_vec[1]*u_mat[j][1]+
+                             sim.k_vec[2]*u_mat[j][2] ) -
+               sim.k_vec[j]*(sim.k_vec[0]*u_mat[i][0]+
+                             sim.k_vec[1]*u_mat[i][1]+
+                             sim.k_vec[2]*u_mat[i][2] ))
+
+        return res
+        
+
+    def tensor_TT(self, lat, sim, uQ = False):
+        """Calculate the traceless-tranverse part of tensor perturbations
+           h_{ij} and their canonical momenta pi_{u_{ij}}.
+           For large lattices this will be slowish.
+           If uQ = True calculate also h_{ij} which is not
+           needed in the spectra:"""
+
+        if uQ:
+            u11 = sim.u11_gpu.get()
+            Uk11 = np.fft.rfftn(u11).transpose()
+
+            u12 = sim.u12_gpu.get()
+            Uk12 = np.fft.rfftn(u12).transpose()
+
+            u13 = sim.u13_gpu.get()
+            Uk13 = np.fft.rfftn(u13).transpose()
+
+            u22 = sim.u22_gpu.get()
+            Uk22 = np.fft.rfftn(u22).transpose()
+
+            u23 = sim.u23_gpu.get()
+            Uk23 = np.fft.rfftn(u23).transpose()
+
+            u33 = sim.u33_gpu.get()
+            Uk33 = np.fft.rfftn(u33).transpose()
+
+            u_mat = [[Uk11,Uk12,Uk13],
+                     [Uk12,Uk22,Uk23],
+                     [Uk13,Uk23,Uk33]]
+
+            "Note that i,j = 0,1,2:"
+            sim.Uk11TT = self.tensorTT_ij(lat, sim, u_mat,0,0)
+            sim.Uk12TT = self.tensorTT_ij(lat, sim, u_mat,0,1)
+            sim.Uk13TT = self.tensorTT_ij(lat, sim, u_mat,0,2)
+
+            sim.Uk22TT = self.tensorTT_ij(lat, sim, u_mat,1,1)
+            sim.Uk23TT = self.tensorTT_ij(lat, sim, u_mat,1,2)
+        
+            sim.Uk33TT = self.tensorTT_ij(lat, sim, u_mat,2,2)
+
+        "Canonical momenta:"
+        piu11 = sim.piu11_gpu.get()
+        PiUk11 = np.fft.rfftn(piu11).transpose()
+
+        piu12 = sim.piu12_gpu.get()
+        PiUk12 = np.fft.rfftn(piu12).transpose()
+
+        piu13 = sim.piu13_gpu.get()
+        PiUk13 = np.fft.rfftn(piu13).transpose()
+
+        piu22 = sim.piu22_gpu.get()
+        PiUk22 = np.fft.rfftn(piu22).transpose()
+
+        piu23 = sim.piu23_gpu.get()
+        PiUk23 = np.fft.rfftn(piu23).transpose()
+
+        piu33 = sim.piu33_gpu.get()
+        PiUk33 = np.fft.rfftn(piu33).transpose()
+
+        piu_mat = [[PiUk11,PiUk12,PiUk13],
+                   [PiUk12,PiUk22,PiUk23],
+                   [PiUk13,PiUk23,PiUk33]]
+
+        "Note that i,j = 0,1,2:"
+        sim.PiUk11TT = self.tensorTT_ij(lat, sim, piu_mat,0,0)
+        sim.PiUk12TT = self.tensorTT_ij(lat, sim, piu_mat,0,1)
+        sim.PiUk13TT = self.tensorTT_ij(lat, sim, piu_mat,0,2)
+
+        sim.PiUk22TT = self.tensorTT_ij(lat, sim, piu_mat,1,1)
+        sim.PiUk23TT = self.tensorTT_ij(lat, sim, piu_mat,1,2)
+        
+        sim.PiUk33TT = self.tensorTT_ij(lat, sim, piu_mat,2,2)
+
+
+    def process_tensors(self, lat, sim, filename, uQ = False):
+        """
+        Calculate the traceless-tranverse part of tensors and
+        the spectrum of graviational waves.
+        Note that in the spectrum off-diagonal elements of h_ij
+        are multiplied with 2 since h_ij = h_ji and only elements
+        for which i>=j are calculated.
+        The results are written to datafile."""
+
+        import postprocess.calc_gw_spect as gws
+
+        "Calculate the traceless-tranverse part of tensors:"
+        self.tensor_TT(lat, sim, uQ)
+
+        dk_inv = 1.0/lat.dk
+        pi = np.pi
+
+        "Calculate the spectra:"
+        spect_k = np.zeros_like(sim.gw_spect_k)
+        sim.gw_spect_k = np.zeros_like(spect_k)
+        
+        gws.calc_spect_pi_h(sim.PiUk11TT.real,
+                            sim.PiUk11TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+
+        sim.gw_spect_k += spect_k
+
+        gws.calc_spect_pi_h(sim.PiUk12TT.real,
+                            sim.PiUk12TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+        
+        sim.gw_spect_k += 2*spect_k
+
+        gws.calc_spect_pi_h(sim.PiUk13TT.real,
+                            sim.PiUk13TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+        
+        sim.gw_spect_k += 2*spect_k
+
+        gws.calc_spect_pi_h(sim.PiUk22TT.real,
+                            sim.PiUk22TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+
+        sim.gw_spect_k += spect_k
+
+        gws.calc_spect_pi_h(sim.PiUk23TT.real,
+                            sim.PiUk23TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+
+        sim.gw_spect_k += 2*spect_k
+
+        gws.calc_spect_pi_h(sim.PiUk33TT.real,
+                            sim.PiUk33TT.imag,
+                            sim.k_abs,
+                            sim.W_gw,
+                            spect_k,
+                            lat.dk,
+                            dk_inv)
+
+        sim.gw_spect_k += spect_k
+
+
+        """Calculate the average over the bins and multiply with
+           the correct coefficient:"""
+        coeff = sim.a**-6*lat.mpl**2.*lat.dx**6/(8*pi**2.*lat.L**3)
+
+        sim.gw_spect_k = coeff*np.where(sim.W_gw > 0,
+                                        sim.gw_spect_k/sim.W_gw,
+                                        sim.gw_spect_k)
+
+        k_val = np.arange(0,sim.k_bins_gw)*lat.dk
+        n_val = np.arange(1,sim.k_bins_gw)
+
+        "Energy density of gravitational waves:"
+        sim.rho_gw = (sim.gw_spect_k[1:]/n_val).sum()
+
+        sim.omega_gw_list.append(sim.rho_gw/sim.rho)
+
+        "Write to file:"
+        mode = sim.filetype
+
+        if mode == 'silo':
+            import pyvisfile.silo as silo
+
+            f = silo.SiloFile(filename, create=False, mode=silo.DB_APPEND)
+
+            options={}
+
+            if lat.unit == 'm':
+                c = 1./lat.m
+                c1 = lat.m
+            else:
+                c = 1.
+                c1 = 1.0
+
+            t_val = c1*np.asarray(sim.t_write_list,dtype=np.float64)
+            omega_gw_val = np.asarray(sim.omega_gw_list,dtype=np.float64)
+            
+            f.put_curve('gw_spectrum',c*k_val,c**3.*sim.gw_spect_k)
+            f.put_curve('omega_gw', t_val, omega_gw_val)
+
+            f.close()
+
+
+
+
+
 

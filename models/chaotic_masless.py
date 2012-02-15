@@ -20,20 +20,18 @@ class Model:
         self.mpl = 1.0
         self.MPl = np.sqrt(8*np.pi)*self.mpl
 
-        "Mass unit that is used to define other variables:"
-        self.m = 1e-6*self.mpl
-
         "Scalar field masses:"
-        self.m2f1 = self.m**2.
+        self.m2f1 = 0.0
         self.m2f2 = 0.0
         self.m2_fields = [self.m2f1,self.m2f2]
 
-        "Coupling strength:"
-        self.g2 = 1e4*self.m**2
+        "Coupling strengths:"
+        self.lamb = 1e-14
+        self.g2 = 120*self.lamb
 
         "Initial values for the fields and the field time derivatives:"
 
-        self.f10 = 1.0093430384226378929425913902459
+        self.f10 = 1.714
         self.f20 = 1e-16*self.mpl
 
         self.df1_dt0 = -0.7137133070120812430962278466136*self.m
@@ -41,6 +39,9 @@ class Model:
 
         self.fields0 = [self.f10, self.f20]
         self.pis0 = [self.df1_dt0, self.df2_dt0]
+
+        "Mass unit that is used to define other variables:"
+        self.m = np.sqrt(self.lamb)*self.f10
 
         self.q = self.g2*self.f10**2/(4*self.m2f1)
 

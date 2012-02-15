@@ -27,6 +27,7 @@ class Model:
         #self.m2f1 = (3e-10)**2#0.0#
         self.m2f1 = (1e-9)**2
         self.m2f2 = 0.0
+        self.m2_fields = [self.m2f1]
 
         "Coupling strengths:"
         self.g2 = 1e-8
@@ -85,7 +86,7 @@ class Model:
         #self.dtau_hom = 1./(1000*self.m)
 
         "Lattice side length:"
-        self.L = 5./8./self.m
+        self.L = 5./12./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -114,6 +115,9 @@ class Model:
            (this disables post-processing). Also disables evoQ:"""
         self.zetaQ = False#True#
 
+        """Whether to solve tensor perturbations:"""
+        self.gwsQ = True#False#
+
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 4e-13
 
@@ -121,7 +125,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to calculate rho and error:"
-        self.flush_freq = 64#256#*120
+        self.flush_freq = 8*64#256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
@@ -141,16 +145,17 @@ class Model:
            the Silo files:"""
         self.fieldsQ = False#True#
 
-        "If spectQ = True calculate spectrums at the end:"
+        "If spectQ = True calculate spectrums:"
         self.spectQ = True#False#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
-           the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'
+           the spectrums. 'k2_eff' uses k^2_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#
@@ -168,7 +173,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = True#False#
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
@@ -188,6 +193,7 @@ class Model:
         if self.zetaQ == True:
             self.evoQ = False
             self.spectQ = False
+            self.gwsQ = False
             self.distQ = False
             self.statsQ = False
             self.fieldsQ = False

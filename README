@@ -42,7 +42,9 @@ Files included:
     - lattice.py
     - main_program.py
     - misc_functions.py
+    - procedures.py
     - setup.py
+    - solvers.py
     - spectrum.py
     - symp_integrator.py
 
@@ -60,6 +62,7 @@ Files included:
     - chaotic.py
     - curvaton.py
     - curvaton_si.py
+    - curvaton_single.py
     - oscillon.py
     - q_ball.py
 
@@ -303,9 +306,14 @@ the necessary data from zeta_data.csv files stored in the used superfolder.
 
 7 To Do list/Improvements
 
+- Possibility to calculate the evolution gravitational wave tensor
+
 - Multi-GPU support should be included. This might however take some
 work due to the periodicity of the lattice.
 
+- OpenCL support would allow to run the simulations also on AMD Radeon cards.
+  Kernel functions would have to be however rewritten (completely?) and also
+  tested on Radeon cards. This might take a long time and lot of work.
 
 ------------------------------------------------------
 This is an example of an .aksetup-defaults.py file.

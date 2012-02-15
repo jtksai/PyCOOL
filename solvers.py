@@ -91,7 +91,7 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
                    flush = True):
     """This function will solve the evolution of the system until
        the condition set by endQ argument is false.
-       order = 2, 4, 6 or 8
+       order = 2, 4, 6 or 8 the order of the non-linear integrator
        start, end = Cuda timing functions
        endQ = If endQ = 'time' uses sim.t < model.t_fin as condition whereas
               endQ = 'H' uses H > 0.9*model.H_ref as the condition."""
@@ -215,6 +215,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                     if lat.postQ:
                         postp.process_fields(lat, V, sim, data_file)
 
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
+
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_2(lat, V, sim, lat.dtau)
@@ -228,6 +232,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
 
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
         elif order == 4:
             "Solve the non-linear evolution:"
             while (sim.t<model.t_fin):
@@ -239,6 +247,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                     "Calculate spectrums and statistics:"
                     if lat.postQ:
                         postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -253,6 +265,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
 
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
         elif order == 6:
             "Solve the non-linear evolution:"
             while (sim.t<model.t_fin):
@@ -264,6 +280,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                     "Calculate spectrums and statistics:"
                     if lat.postQ:
                         postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -278,6 +298,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
 
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
         elif order == 8:
             "Solve the non-linear evolution:"
             while (sim.t<model.t_fin):
@@ -289,6 +313,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                     "Calculate spectrums and statistics:"
                     if lat.postQ:
                         postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
 
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
@@ -302,6 +330,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             "Calculate spectrums and statistics of final values:"
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
 
     elif endQ == 'H' or model.zetaQ:
         
@@ -322,6 +354,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                 if lat.postQ:
                     postp.process_fields(lat, V, sim, data_file)
 
+                "Calculate spectrums and statistics of final values:"
+                if lat.gws:
+                    postp.process_tensors(lat, sim, data_file)
+
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_2(lat, V, sim, lat.dtau)
@@ -334,6 +370,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             "Calculate spectrums and statistics of final values:"
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
 
         elif order == 4:
             "Solve the non-linear evolution:"
@@ -352,6 +392,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                 if lat.postQ:
                     postp.process_fields(lat, V, sim, data_file)
 
+                "Calculate spectrums and statistics of final values:"
+                if lat.gws:
+                    postp.process_tensors(lat, sim, data_file)
+
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_4(lat, V, sim, lat.dtau)
@@ -364,6 +408,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             "Calculate spectrums and statistics of final values:"
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
 
         elif order == 6:
             "Solve the non-linear evolution:"
@@ -382,6 +430,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                 if lat.postQ:
                     postp.process_fields(lat, V, sim, data_file)
 
+                "Calculate spectrums and statistics of final values:"
+                if lat.gws:
+                    postp.process_tensors(lat, sim, data_file)
+
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_6(lat, V, sim, lat.dtau)
@@ -394,6 +446,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             "Calculate spectrums and statistics of final values:"
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
 
         elif order == 8:
             "Solve the non-linear evolution:"
@@ -412,6 +468,10 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                 if lat.postQ:
                     postp.process_fields(lat, V, sim, data_file)
 
+                "Calculate spectrums and statistics of final values:"
+                if lat.gws:
+                    postp.process_tensors(lat, sim, data_file)
+
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_8(lat, V, sim, lat.dtau)
@@ -425,4 +485,7 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
             if lat.postQ:
                 postp.process_fields(lat, V, sim, data_file)
 
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
 

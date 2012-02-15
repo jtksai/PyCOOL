@@ -18,12 +18,10 @@ and from DEFROST http://www.sfu.ca/physics/cosmology/defrost .
 
 
 __constant__ {{ type_name_c }} c_coeff[4];
-__constant__ {{ type_name_c }} f_coeff[{{ f_coeff_l_c }}];
-//{% if d_coeff_l_c > 0 %} __constant__ {{ type_name_c }} d_coeff[{{ d_coeff_l_c }}]; {% endif %}
-__constant__ {{ type_name_c }} d_coeff[{{ d_coeff_l_c }}];
+__constant__ {{ type_name_c }} gw_coeff[1];
 
 ////////////////////////////////////////////////////////////////////////////////
-// Scalar field evolution
+// Gravitational wave kernels
 ////////////////////////////////////////////////////////////////////////////////
 
 __device__ int period(int id, int block_id, int grid_dim, int dim)
@@ -58,12 +56,14 @@ __device__ double atomicAdd(double* address, double val)
      return old;
 }
 
-//////////////////////////////////////////////////////////////////////
-// Scalar field evolution code - H3 equations
-//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Calculate the laplacian of one component of the u_ij tensor and evolve the canonical momentum of the tensor field
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *field{{i}}{% endfor %}{% for i in range(1,fields_c+1) %}, {{ type_name_c }} *pi{{i}}_m{% endfor %} {% if gw_c %}, {{ type_name_c }} *piu11_m, {{ type_name_c }} *piu12_m, {{ type_name_c }} *piu22_m, {{ type_name_c }} *piu13_m, {{ type_name_c }} *piu23_m, {{ type_name_c }} *piu33_m{% endif %})
+__global__ void kernelU3_{{ tensor_ij_c }}({{ type_name_c }} *u11_m, {{ type_name_c }} *u12_m, {{ type_name_c }} *u22_m, {{ type_name_c }} *u13_m, {{ type_name_c }} *u23_m, {{ type_name_c }} *u33_m, {{ type_name_c }} *piu11_m, {{ type_name_c }} *piu12_m, {{ type_name_c }} *piu22_m, {{ type_name_c }} *piu13_m, {{ type_name_c }} *piu23_m, {{ type_name_c }} *piu33_m)
 
+// This function calculates \nabla^2 u_{ij} for the u_{ij} components
+// and evolves pi_u_{ij}
 {
 
     // Shared data used in the calculation of the Laplacian of the field f
@@ -78,26 +78,17 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     volatile unsigned int in_idx = period(blockIdx.y*(blockDim.y-2)+threadIdx.y-1,blockIdx.y,{{ grid_y_c }},{{ DIM_Y_c }})*{{ DIM_X_c }} + period(blockIdx.x*(blockDim.x-2)+threadIdx.x-1,blockIdx.x,{{ grid_x_c }},{{ DIM_X_c }});
     volatile unsigned int stride = {{ stride_c }};
 
-    {{ type_name_c }} f{{ field_i_c }};
-    //{{ type_name_c }} pi{{ field_i_c }};
-   {% for i in other_i_c %} {{ type_name_c }} f{{i}};
-   {% endfor %}
-    {{ type_name_c }} D2f;
-    {{ type_name_c }} sumi=0.;
-    //{{ type_name_c }} y, t, c=0.f;
-
-    //{% if gw_c %}
-    //{{ type_name_c }} Dxf, Dyf, Dzf;
-    //{% endif %}
+    {{ type_name_c }} D2u;
+    //{{ type_name_c }} sumi=0.;
 
     /////////////////////////////////////////
     // load the initial data into smem
     // sdwn_data from the top of the lattice
     // due to the periodicity of the lattice
 
-    sdwn_data[threadIdx.y][threadIdx.x] = field{{ field_i_c }}[in_idx + ({{ DIM_Z_c }} - 1)*stride];
-    smid_data[threadIdx.y][threadIdx.x] = field{{ field_i_c }}[in_idx];
-    sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx + stride];
+    sdwn_data[threadIdx.y][threadIdx.x] = u{{ tensor_ij_c }}_m[in_idx + ({{ DIM_Z_c }} - 1)*stride];
+    smid_data[threadIdx.y][threadIdx.x] = u{{ tensor_ij_c }}_m[in_idx];
+    sup_data[threadIdx.y][threadIdx.x]  = u{{ tensor_ij_c }}_m[in_idx + stride];
 
     __syncthreads();
 
@@ -106,20 +97,17 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
     {
-        f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
-        //pi{{ field_i_c }} = pi{{ field_i_c }}_m[in_idx];		// field derivative
-        // other fields
-       {% for i in other_i_c %} f{{i}} = field{{i}}[in_idx];
-       {% endfor %}
+        //f{{ tensor_ij_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
+        //pi{{ tensor_ij_c }} = pi{{ tensor_ij_c }}_m[in_idx];		// field derivative
 
     /////////////////////////////////////////
     // Calculations
 
     // Discretized Laplacian operator
-    // f_coeff[1] = dt*a(t)/(dx^2)
+    // gw_coeff[0] = dt*a(t)^2/(dx^2)
     // c_coeff's = laplacian discretization coefficients
 
-        D2f = f_coeff[1]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
+        D2u = gw_coeff[0]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
               + c_coeff[1]*( sdwn_data[threadIdx.y][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x+1]
               + smid_data[threadIdx.y-1][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x-1]
               + smid_data[threadIdx.y+1][threadIdx.x] + sup_data[threadIdx.y][threadIdx.x])
@@ -135,39 +123,15 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
               + sup_data[threadIdx.y+1][threadIdx.x-1] + sup_data[threadIdx.y+1][threadIdx.x+1]));
 
 
-    /////////////////////////////////
-    //  Evolution step
-    /////////////////////////////////
-
-    // dV = dt*a^3*dV/df for the field being evolved
+    /////////////////////////////////////////
+    //  Evolution step of the momentum term
+    /////////////////////////////////////////
 
     //  Different coefficients related to equations of motion
     //  and to the potential function used
-    //  f_coeff[0] = a(t)
-    //  f_coeff[1] = dt*a(t)/(dx^2)
+    //  gw_coeff[0] = dt*a(t)^2/(dx^2)
 
-        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-
-    //  Note that -4*V_interaction included for the last field
-        sumi = f{{ field_i_c }}*D2f {{ V_c }};
-
-
-    {% if gw_c %}
-        //Tensor perturbation source terms:
-        //Dxf = smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1];
-        //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
-        //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
-
-    //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
-
-        piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
-        piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-        piu22_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-        piu13_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-        piu23_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-        piu33_m[in_idx] += f_coeff[2]*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-    {% endif %}
-
+        piu{{ tensor_ij_c }}_m[in_idx] += D2u;
 
      }
 
@@ -188,7 +152,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
 	sdwn_data[threadIdx.y][threadIdx.x] = smid_data[threadIdx.y][threadIdx.x];
 	smid_data[threadIdx.y][threadIdx.x] = sup_data[threadIdx.y][threadIdx.x];
-	sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx+stride];
+	sup_data[threadIdx.y][threadIdx.x]  = u{{ tensor_ij_c }}_m[in_idx+stride];
        
 	__syncthreads();
 
@@ -198,19 +162,14 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 	if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
 	{
 
-            f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
-            // other fields
-           {% for i in other_i_c %} f{{i}} = field{{i}}[in_idx];
-           {% endfor %}
-
 	/////////////////////////////////////////
 	// Calculations
 
         // Discretized Laplacian operator
-        // f_coeff[1] = dt*a(t)/(dx^2)
+        // gw_coeff[0] = dt*a(t)/(dx^2)
         // c_coeff's = laplacian discretization coefficients
 
-          D2f  = f_coeff[1]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
+          D2u  = gw_coeff[0]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
               + c_coeff[1]*( sdwn_data[threadIdx.y][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x+1]
               + smid_data[threadIdx.y-1][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x-1]
               + smid_data[threadIdx.y+1][threadIdx.x] + sup_data[threadIdx.y][threadIdx.x])
@@ -226,41 +185,17 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
               + sup_data[threadIdx.y+1][threadIdx.x-1] + sup_data[threadIdx.y+1][threadIdx.x+1]));
 
 
-	/////////////////////////////////
-	//  Evolution step
-	/////////////////////////////////
-
-        // dV = dt*a^3*dV/df for the field being evolved
+	////////////////////////////////////////
+	//  Evolution step of the momentum term
+	////////////////////////////////////////
 
         //  Different coefficients related to equations of motion
         //  and to the potential function used
-        //  f_coeff[0] = a(t)
-        //  f_coeff[1] = dt*a(t)/(dx^2)
+        //  gw_coeff[0] = a(t)
+        //  gw_coeff[0] = dt*a(t)/(dx^2)
 
 
-          pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-
-        //  Note that -4*V_interaction included for the last field
-          sumi += f{{ field_i_c }}*D2f {{ V_c }};
-
-
-        {% if gw_c %}
-        //Tensor perturbation source terms:
-        //Dxf = smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1];
-        //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
-        //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
-
-        //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
-
-          piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
-          piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-          piu22_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-          piu13_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-          piu23_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-          piu33_m[in_idx] += f_coeff[2]*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-    {% endif %}
-
-
+          piu{{ tensor_ij_c }}_m[in_idx] += D2u;
 
          }
 
@@ -277,24 +212,19 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // up data now from the bottom of the lattice
     sdwn_data[threadIdx.y][threadIdx.x]  = smid_data[threadIdx.y][threadIdx.x];
     smid_data[threadIdx.y][threadIdx.x]  = sup_data[threadIdx.y][threadIdx.x];
-    sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[period(blockIdx.y*(blockDim.y-2) + threadIdx.y-1,blockIdx.y,{{ grid_y_c }},{{ DIM_Y_c }})*{{ DIM_X_c }} + period(blockIdx.x*(blockDim.x-2) + threadIdx.x-1,blockIdx.x,{{ grid_x_c }},{{ DIM_X_c }})];
+    sup_data[threadIdx.y][threadIdx.x]  = u{{ tensor_ij_c }}_m[period(blockIdx.y*(blockDim.y-2) + threadIdx.y-1,blockIdx.y,{{ grid_y_c }},{{ DIM_Y_c }})*{{ DIM_X_c }} + period(blockIdx.x*(blockDim.x-2) + threadIdx.x-1,blockIdx.x,{{ grid_x_c }},{{ DIM_X_c }})];
 
     __syncthreads();
 
     if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
     {
 
-        f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
-        // other fields
-       {% for i in other_i_c %} f{{i}} = field{{i}}[in_idx];
-       {% endfor %}
-
     /////////////////////////////////////////
     // Calculations
 
     // Discretized Laplacian operator
 
-        D2f  = f_coeff[1]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
+        D2u  = gw_coeff[0]*(c_coeff[0]*smid_data[threadIdx.y][threadIdx.x]
               + c_coeff[1]*( sdwn_data[threadIdx.y][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x+1]
               + smid_data[threadIdx.y-1][threadIdx.x] + smid_data[threadIdx.y][threadIdx.x-1]
               + smid_data[threadIdx.y+1][threadIdx.x] + sup_data[threadIdx.y][threadIdx.x])
@@ -309,45 +239,16 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
               + sup_data[threadIdx.y-1][threadIdx.x+1] + sup_data[threadIdx.y-1][threadIdx.x-1]
               + sup_data[threadIdx.y+1][threadIdx.x-1] + sup_data[threadIdx.y+1][threadIdx.x+1]));
 
-
-    /////////////////////////////////
-    //  Evolution step
-    /////////////////////////////////
-
-    // dV = dt*a^3*dV/df for the field being evolved
+    /////////////////////////////////////////
+    //  Evolution step of the momentum term
+    /////////////////////////////////////////
 
     //  Different coefficients related to equations of motion
     //  and to the potential function used
-    //  f_coeff[0] = a(t)
-    //  f_coeff[1] = dt*a(t)/(dx^2)
+    //  gw_coeff[0] = a(t)
+    //  gw_coeff[0] = dt*a(t)/(dx^2)
 
-        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-
-    //  Note that -4*V_interaction included for the last field
-        sumi += f{{ field_i_c }}*D2f {{ V_c }};
-
-    // Use atomic add as a precaution
-        atomicAdd(&sumterm_w[period(blockIdx.y*(blockDim.y-2) + threadIdx.y-1,blockIdx.y,{{ grid_y_c }},{{ DIM_Y_c }})*{{ DIM_X_c }} + period(blockIdx.x*(blockDim.x-2) + threadIdx.x-1,blockIdx.x,{{ grid_x_c }},{{ DIM_X_c }})], sumi);
-
-
-    {% if gw_c %}
-        //Tensor perturbation source terms:
-        //Dxf = smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1];
-        //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
-        //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
-
-        //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
-
-        piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
-        piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-        piu22_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
-        piu13_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-        piu23_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-        piu33_m[in_idx] += f_coeff[2]*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x]);
-    {% endif %}
-
-
-
+        piu{{ tensor_ij_c }}_m[in_idx] += D2u;
 
     }
 

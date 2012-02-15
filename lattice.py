@@ -42,7 +42,7 @@ class Lattice:
 
     precision = used precision.
 
-    order = Order of the linearized integrator.
+    lin_order = Order of the linearized integrator.
     
     alpha = dx/dtau
 
@@ -95,16 +95,9 @@ class Lattice:
         block_z2 = 1
     """
 
-    def __init__(self, model, precision='double', order = 2,
+    def __init__(self, model, precision='double', lin_order = 2,
                  alpha=40.0, init_m = 'defrost_cpu',
                  hom_mode = True, unit_m = 'm', scale = True):
-
-        """def __init__(self, n, L, fields, mpl, m, precision='double', order = 2,
-                 alpha=40.0, dtau = None, init_m = 'defrost_cpu',
-                 hom_mode = True, test = False, field_rho = False,
-                 field_lp = False, m2_eff = True, stats = False,
-                 spects = False, dists = False,
-                 unit_m = 'm', scale = True, max_reg = None):"""
 
         print '\nLattice size = ' + str(model.n) + '**3'
 
@@ -117,15 +110,21 @@ class Lattice:
 
         self.scale = scale
 
+        self.gws = model.gwsQ
+
         self.fieldsQ = model.fieldsQ
 
         self.m2_eff = True if model.m2_effQ and model.spectQ else False
+
+        self.k2_effQ = True if model.spect_m == 'k2_eff' else False
 
         self.field_lp = model.field_lpQ
 
         self.stats = model.statsQ
 
         self.spect = model.spectQ
+
+        self.spect_method = model.spect_m
 
         self.dist = model.distQ
 
@@ -154,10 +153,10 @@ class Lattice:
         self.VL_reduced = self.VL*model.mpl**2.0
 
         "Integrator order:"
-        self.order = order
-        if order not in [2, 4, 6, 8]:
+        self.order = lin_order
+        if lin_order not in [2, 4, 6, 8]:
             import sys
-            sys.exit("Integrator order has to be  2, 4, 6 or 8!")
+            sys.exit("Linearized integrator order has to be  2, 4, 6 or 8!")
 
         "alpha = dx/dtau"
         self.alpha = alpha
@@ -468,7 +467,7 @@ class Potential:
             self.d_coeff_l = len(self.D_coeff)
         else:
             self.d_coeff_l = 1
-        self.f_coeff_l = 2 + self.n_coeffs
+        self.f_coeff_l = 3 + self.n_coeffs
         self.g_coeff_l = 3 + self.n_coeffs
         self.h_coeff_l = 2
         self.p_coeff_l = 2 + self.n_coeffs
@@ -486,8 +485,17 @@ class Potential:
         return np.array([dt/(a**2.),dt/(a**3.)],dtype = lat.prec_real)
 
     def f_array(self, lat, a, dt):
-        "Constant memory array f_coeff coefficients"
-        return np.array([a, a*dt*lat.dx**(-2.)], dtype = lat.prec_real)
+        """Constant memory array f_coeff coefficients.
+           Note that the third term depends on the definition of
+           the discrete derivative."""
+        return np.array([a, a*dt*lat.dx**(-2.),
+                         0.5*lat.mpl**2*a**2.*dt*lat.dx**(-2.)],
+                        dtype = lat.prec_real)
+
+    def gw_array(self, lat, a, dt):
+        """Constant memory array gw_coeff coefficients used in
+           tensor perturbations"""
+        return np.array([a**2.*dt*lat.dx**(-2.)], dtype = lat.prec_real)
 
     def H3_V_coeff(self, sim, dt):
         a = sim.a

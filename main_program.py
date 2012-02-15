@@ -25,7 +25,7 @@ from models.chaotic import *
 model = Model()
 
 "Create a lattice:"
-lat = Lattice(model, order = 4, scale = model.scale, init_m = 'defrost_cpu')
+lat = Lattice(model, lin_order = 4, scale = model.scale, init_m = 'defrost_cpu')
 
 " Create a potential function object:"
 V = Potential(lat, model)
@@ -33,7 +33,9 @@ V = Potential(lat, model)
 "Create simulation, evolution and postprocessing instances:"
 sim = si.Simulation(model, lat, V, model.a_in, model.fields0, model.pis0,
                     steps = 10000)
+
 evo = si.Evolution(lat, V, sim)
+
 postp = pp.Postprocess(lat, V)
 
 if model.zetaQ == False:
@@ -108,7 +110,8 @@ if sim.i0 != 0:
 if model.zetaQ:
 
     #r_decay = 0.0114181
-    r_decay = 0.0550699
+    #r_decay = 0.0550699
+    r_decay = 0.0369633
 
     "List of different homogeneous initial values for fields:"
     f0_list = [[model.f10 + i/20.*model.delta_f10/2.] for i in xrange(-20,21)]

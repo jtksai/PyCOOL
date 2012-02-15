@@ -22,6 +22,8 @@ ext = Extension("init.f_init", ["init/f_init.pyx"],
 
 ext2 = Extension("postprocess.calc_spect", ["postprocess/calc_spect.pyx"])
 
-setup(ext_modules=[ext, ext2],
+ext3 = Extension("postprocess.calc_gw_spect", ["postprocess/calc_gw_spect.pyx"])
+
+setup(ext_modules=[ext, ext2, ext3],
     cmdclass = {'build_ext': build_ext})
 

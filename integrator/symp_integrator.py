@@ -9,7 +9,7 @@ import numpy as np
 from lattice import *
 import init.field_init as fi
 
-def kernel_H2_gpu_code(lat, k, write_code=False):
+def kernel_H2_gpu_code(lat, write_code=False):
     """
     Read kernel template from a file and compile a sourcemodule.
     Different values are read from Lattice Object lat and
@@ -17,12 +17,7 @@ def kernel_H2_gpu_code(lat, k, write_code=False):
 
     fields = lat.fields
 
-    if k == 0:
-        eq_sign = '='
-    else:
-        eq_sign = '+='
-
-    kernel_name = 'kernel_H2_'+str(k)
+    kernel_name = 'kernel_H2'
 
     print 'Compiling kernel: ' + kernel_name
     
@@ -45,8 +40,7 @@ def kernel_H2_gpu_code(lat, k, write_code=False):
                         stride_c = lat.stride,
                         DIM_X_c = lat.dimx,
                         DIM_Z_c = lat.dimz,
-                        sum_c=sumi,
-                        eq_sign_c = eq_sign)
+                        sum_c=sumi)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -114,7 +108,8 @@ def kernel_H3_gpu_code(lat, field_i, V, write_code=False):
                         Vi_c = V.V_i_H3[i],
                         V_intQ = len(V.V_int_H3)>0,
                         V_int_c = V.V_int_H3,
-                        V_c = V_term)
+                        V_c = V_term,
+                        gw_c = lat.gws)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -355,6 +350,45 @@ def kernel_rho_pres_gpu_code(lat, field_i, V, write_code=False):
     return SourceModule(f_code.encode( "utf-8" ),
                         options=['-maxrregcount='+lat.reglimit])
 
+def kernel_gws_gpu_code(lat, tensor_ij, V, write_code=False):
+    """
+    Read kernel template from a file and compile a sourcemodule.
+    Different values are read from Lattice Object lat and
+    potential Object V."""
+
+
+    kernel_name = 'kernel_gws_' + 'tensor' + str(tensor_ij)
+
+    print 'Compiling kernel: ' + kernel_name
+
+    f = codecs.open('cuda_templates/kernel_gws.cu','r',encoding='utf-8')
+    evo_code = f.read()
+    f.close()
+
+    tpl = Template(evo_code)
+
+    f_code = tpl.render(kernel_name_c = kernel_name,
+                        type_name_c = lat.prec_string,
+                        tensor_ij_c = tensor_ij,
+                        fields_c = lat.fields,
+                        block_x_c = lat.block_x2,
+                        block_y_c = lat.block_y2,
+                        grid_x_c = lat.grid_x,
+                        grid_y_c = lat.grid_y,
+                        stride_c = lat.stride,
+                        DIM_X_c = lat.dimx,
+                        DIM_Y_c = lat.dimy,
+                        DIM_Z_c = lat.dimz)
+
+    if write_code==True :
+        g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
+                        encoding='utf-8')
+        g.write(f_code)
+        g.close()
+
+    return SourceModule(f_code.encode( "utf-8" ),
+                        options=['-maxrregcount=' + lat.reglimit])
+
 def kernel_spat_corr_gpu_code(lat, write_code=False):
     """
     Read kernel template from a file and compile a sourcemodule.
@@ -487,13 +521,13 @@ class Simulation:
         self.ln_a_list = []
         self.r_list = []
 
-        if self.lin_evo:
+        if self.lin_evo or lat.k2_effQ:
             "Array of k^2 values corresponding to discrete Laplacian:"
-            self.k2_field = gpuarray.to_gpu(np.zeros(lat.dims_k))
+            self.k2_field_gpu = gpuarray.to_gpu(np.zeros(lat.dims_k))
+            self.k2_field = np.zeros(lat.dims_k)
             self.k2_bins = self.zeros
             self.k2_bins_gpu = gpuarray.to_gpu(self.k2_bins)
             self.k2_bin_id = gpuarray.to_gpu(self.zeros_i)
-
 
         """Number of steps in linearized CUDA kernel.
            If only one CUDA device in the system more than 1e6 steps
@@ -528,6 +562,9 @@ class Simulation:
         #self.omega_rad2_list = []
         self.omega_mat_list = []
         self.omega_int_list = []
+
+        "Energy density of gravitational waves:"
+        self.omega_gw_list = []
 
         "Flush list for a homogeneous solution:"
         self.flush_t_hom = []
@@ -570,10 +607,11 @@ class Simulation:
 
         self.m2_eff = mass_eff(V, lat.field_list, fields0, self.H,
                                self.deSitter)
-        self.fields = [field(lat, V, fields0[i], pis0[i], i+1,
+        self.fields = [field(model, lat, V, fields0[i], pis0[i], i+1,
                              self.m2_eff[i], a_in, lat.init_mode,
                              lat.hom_mode)
                        for i in xrange(lat.fields)]
+
         "Function to calculate the numerical value of the potential function:"
         self.V = V_func(lat, V)
 
@@ -613,6 +651,49 @@ class Simulation:
         self.pd_gpu = gpuarray.zeros(shape = lat.dims_xy,
                                      dtype = lat.prec_real)
 
+        "Tensor perturbations arrays u_ij and pi_{u_ij}:"
+        if lat.gws:
+            import postprocess.calc_gw_spect as gws
+
+            "Tensor indices:"
+            self.tensor_ij_ind = [11,12,22,13,23,33]
+            self.u11_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u12_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u22_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u13_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u23_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u33_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu11_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu12_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu22_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu13_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu23_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu33_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+
+            "k arrays used when extracting the TT part of tensors:"
+
+            self.kx = np.zeros(lat.dims_k, dtype = lat.prec_real)
+            self.ky = np.zeros(lat.dims_k, dtype = lat.prec_real)
+            self.kz = np.zeros(lat.dims_k, dtype = lat.prec_real)
+            self.k_abs = np.zeros(lat.dims_k, dtype = lat.prec_real)
+
+            print '\nCalculating momentum vectors k_x, k_y and k_z\n'
+
+            gws.calc_k_eff(self.kx, self.ky, self.kz, self.k_abs, lat.dx)
+
+            "This are used when calculating gw spectra:"
+            self.k_max_gw = self.k_abs.max()/lat.dk
+
+            self.k_vec = [self.kx, self.ky, self.kz]
+
+            self.k_bins_gw = np.int32(np.floor(self.k_max_gw)) + 1
+
+            self.gw_spect_k = np.zeros(self.k_bins_gw, dtype = np.float64)
+
+            "Count array when binning spectra:"
+            self.W_gw = np.zeros(self.k_bins_gw, dtype = np.int32)
+
+
         "These are used for storing constant memory arrays:"
         self.d_array = cuda.pagelocked_empty(V.d_coeff_l,
                                              dtype = lat.prec_real)
@@ -624,10 +705,17 @@ class Simulation:
                                              dtype = lat.prec_real)
         self.lin_array = cuda.pagelocked_empty(V.lin_coeff_l,
                                                dtype = lat.prec_real)
+        self.gw_array = cuda.pagelocked_empty(1,dtype = lat.prec_real)
 
         "List used when calculating distributions of the energy densities:"
         self.rho_cdf = []
         self.rho_pdf = []
+
+        """Use different binning for k2_eff spectra
+           (These are calculated at Evolution object if
+           model.spect_m == 'k2_eff':"""
+        self.k_max = 0.
+        self.k_bins = 0
 
         "Create a Cuda Stream for the simulation:"
         self.stream = cuda.Stream()
@@ -693,7 +781,7 @@ class Simulation:
     def calc_k2_bins(self, lat):
         """Return an array of different values of k^2 inside the lattice:"""
 
-        k2n = lat.dx**2.*(self.k2_field.get())
+        k2n = lat.dx**2.*(self.k2_field_gpu.get())
 
         tmp = np.array(sorted(set(k2n.flatten())),dtype=np.float64)
         diff_list = np.diff(tmp)
@@ -1310,6 +1398,22 @@ class Simulation:
         self.omega_int_list = []
         self.lp_list = []
 
+        "Tensor perturbations arrays u_ij and pi_{u_ij}:"
+        if lat.gws:
+            "Tensor indices:"
+            self.u11_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u12_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u22_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u13_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u23_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.u33_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu11_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu12_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu22_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu13_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu23_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+            self.piu33_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+
         """
         for field in self.fields:
             field.m2_eff_list = []
@@ -1371,11 +1475,13 @@ class field:
                                 perturbation evolution as initial value
         - self.d2V_sum_gpu = sum over z-direction of effective mass."""
 
-    def __init__(self, lat, V, f0, pi0, field_i, m2_eff, a_in, init_m, hom_m):
+    def __init__(self, model, lat, V, f0, pi0, field_i, m2_eff, a_in, init_m,
+                 hom_m):
 
         self.field_i = field_i
         self.field_var = 'f'+str(field_i)
 
+        self.m2_in = model.m2_fields[field_i-1]
         self.m2_eff = m2_eff
         self.m2_eff_in = m2_eff
 
@@ -1470,9 +1576,11 @@ class field:
         "Number and energy spectra:"
         self.n_k = np.zeros(lat.ns, dtype = np.float64)
         self.rho_k = np.zeros(lat.ns, dtype = np.float64)
+        self.k2_rho_k = np.zeros(lat.ns, dtype = np.float64)
 
         "Field spectra:"
         self.S = np.zeros(lat.ns, dtype = np.float64)
+        self.k2_S = np.zeros(lat.ns, dtype = np.float64)
         #self.Fpk_sq = np.zeros(lat.ns, dtype = np.float64)
 
         "Number of points in the bin:"
@@ -1574,9 +1682,11 @@ class field:
 
 class H2_Kernel:
     "Used to evolve the field variables"
-    def __init__(self, lat, k, write_code=False):
-        self.mod = kernel_H2_gpu_code(lat, k, write_code)
-        self.evo = self.mod.get_function('kernelH2')
+    def __init__(self, lat, write_code=False):
+        self.mod = kernel_H2_gpu_code(lat, write_code)
+        self.evo1 = self.mod.get_function('kernelH2_1')
+        self.evo2 = self.mod.get_function('kernelH2_2')
+        self.gw_evo = self.mod.get_function('kernelU2')
         self.hc_add = self.mod.get_global("h_coeff")
 
     "Constant memory management:"
@@ -1610,11 +1720,32 @@ class H3_Kernel:
     def read_f(self,x):
         cuda.memcpy_dtoh(x,self.fc_add[0])
 
+class gws_Kernel:
+    "Used to evolve the canonical momemtums of tensor perturbations"
+    def __init__(self, lat, tensor_ij, V, write_code=False):
+        self.mod = kernel_gws_gpu_code(lat, tensor_ij, V, write_code)
+        self.evo = self.mod.get_function('kernelU3_' + str(tensor_ij))
+        self.cc_add = self.mod.get_global("c_coeff")
+        self.gwc_add = self.mod.get_global("gw_coeff")
+
+    "Constant memory management:"
+    def update_c(self,x):
+        cuda.memcpy_htod(self.cc_add[0],x)
+    def read_c(self,x):
+        cuda.memcpy_dtoh(x,self.cc_add[0])
+
+    def update_gw(self, x , stream):
+        cuda.memcpy_htod_async(self.gwc_add[0], x, stream=None)
+    def read_gw(self,x):
+        cuda.memcpy_dtoh(x,self.gwc_add[0])
+
+
 class lin_evo_Kernel:
     "Used to evolve the canonical momentums of the fields"
     def __init__(self, lat, V, sim, write_code=False):
-        self.mod = kernel_lin_evo_gpu_code(lat, V, sim, write_code)
-        self.evo = self.mod.get_function('linear_evo')
+        if sim.lin_evo:
+            self.mod = kernel_lin_evo_gpu_code(lat, V, sim, write_code)
+            self.evo = self.mod.get_function('linear_evo')
         self.mod2 = kernel_k2_gpu_code(lat, V, write_code)
         self.k2_calc = self.mod2.get_function('gpu_k2')
         self.k2_bins_calc = self.mod2.get_function('gpu_k2_to_bin')
@@ -1678,12 +1809,14 @@ class Evolution:
         print "-" * 79
         print 'Compiling necessary evolution kernels:'
 
-        self.H2_kernels = [H2_Kernel( lat, 0, write_code),
-                           H2_Kernel( lat, 1, write_code)]
-        self.H3_kernels = [H3_Kernel(lat, i+1, V, write_code)
-                           for i in xrange(lat.fields)]
+        self.H2_kernel = H2_Kernel(lat, write_code)
+        self.H3_kernels = [[H3_Kernel(lat, i+1, V, write_code)
+                           for i in xrange(lat.fields)]]
+        if lat.gws:
+            self.H3_kernels.append([gws_Kernel(lat, ij, V, write_code)
+                                    for ij in sim.tensor_ij_ind])
 
-        if sim.lin_evo:
+        if sim.lin_evo or lat.k2_effQ:
             self.lin_evo_kernel = lin_evo_Kernel(lat, V, sim, write_code)
 
         self.rp_kernels = [rp_Kernel(lat, i+1, V, write_code)
@@ -1692,9 +1825,13 @@ class Evolution:
         self.sc_kernel = corr_Kernel(lat, write_code)
 
         "Load the discretization coefficients to constant memory:"
-        for kernel in self.H3_kernels:
+        for kernel in self.H3_kernels[0]:
             kernel.update_c(lat.cc)
             kernel.update_d(V.D_coeffs_np)
+
+        if lat.gws:
+            for kernel in self.H3_kernels[1]:
+                kernel.update_c(lat.cc)
 
         for kernel in self.rp_kernels:
             kernel.update_c(lat.cc)
@@ -1705,11 +1842,54 @@ class Evolution:
                                             dtype = lat.prec_real))
 
         "Cuda function arguments used in H2 and H3:"
-        self.cuda_arg = [sim.sum_gpu]
+        self.cuda_H2_arg = [[sim.sum_gpu]]
         for f in sim.fields:
-            self.cuda_arg.append(f.f_gpu)
+            self.cuda_H2_arg[0].append(f.f_gpu)
         for f in sim.fields:
-            self.cuda_arg.append(f.pi_gpu)
+            self.cuda_H2_arg[0].append(f.pi_gpu)
+
+        "Cuda function argument used in tensor perturbation kernel:"
+        if lat.gws:
+            self.cuda_H2_arg.append([sim.u11_gpu,
+                                     sim.u12_gpu,
+                                     sim.u22_gpu,
+                                     sim.u13_gpu,
+                                     sim.u23_gpu,
+                                     sim.u33_gpu,
+                                     sim.piu11_gpu,
+                                     sim.piu12_gpu,
+                                     sim.piu22_gpu,
+                                     sim.piu13_gpu,
+                                     sim.piu23_gpu,
+                                     sim.piu33_gpu])
+
+        self.cuda_H3_arg = [[sim.sum_gpu]]
+        for f in sim.fields:
+            self.cuda_H3_arg[0].append(f.f_gpu)
+        for f in sim.fields:
+            self.cuda_H3_arg[0].append(f.pi_gpu)
+        """Following arguments are used in H3 kernels to calculate
+           tensor perturbation source terms:"""
+        if lat.gws:
+            self.cuda_H3_arg[0].extend([sim.piu11_gpu,sim.piu12_gpu,
+                                        sim.piu22_gpu,sim.piu13_gpu,
+                                        sim.piu23_gpu,sim.piu33_gpu])
+
+        "Cuda function arguments used in tensor perturbation Laplacian kernel:"
+        if lat.gws:
+            self.cuda_H3_arg.append([sim.u11_gpu,
+                                     sim.u12_gpu,
+                                     sim.u22_gpu,
+                                     sim.u13_gpu,
+                                     sim.u23_gpu,
+                                     sim.u33_gpu,
+                                     sim.piu11_gpu,
+                                     sim.piu12_gpu,
+                                     sim.piu22_gpu,
+                                     sim.piu13_gpu,
+                                     sim.piu23_gpu,
+                                     sim.piu33_gpu])
+
 
         self.cuda_param_H2 = dict(block=lat.cuda_block_1,
                                   grid=lat.cuda_grid,
@@ -1720,20 +1900,21 @@ class Evolution:
 
         if sim.lin_evo:
             """Calculate k2_eff-terms needed in the perturbation evolution:"""
-            self.lin_evo_kernel.k2_calc(sim.k2_field, **self.cuda_param_H2)
+            self.lin_evo_kernel.k2_calc(sim.k2_field_gpu, **self.cuda_param_H2)
 
+            sim.k2_field = sim.k2_field_gpu.get()
+ 
             "Calculate the bins:"
             sim.calc_k2_bins(lat)
 
-            "Calculate into which bin an element of sim.k2_field belongs:"
+            "Calculate into which bin an element of sim.k2_field_gpu belongs:"
             self.k2_arg = []
-            self.k2_arg.append(sim.k2_field)
+            self.k2_arg.append(sim.k2_field_gpu)
             self.k2_arg.append(sim.k2_bins_gpu)
             self.k2_arg.append(sim.k2_bin_id)
             self.k2_arg.append(np.int32(len(sim.k2_bins)))
 
             self.lin_evo_kernel.k2_bins_calc(*self.k2_arg, **self.cuda_param_H2)
-
 
             "Create the perturbation solution fields:"
             for field in sim.fields:
@@ -1772,6 +1953,55 @@ class Evolution:
                                          grid = (grid_lin,1),
                                          stream = sim.stream)
 
+
+        if sim.lin_evo == False and lat.k2_effQ:
+            """Calculate k2_eff-terms needed in the spectra:"""
+            self.lin_evo_kernel.k2_calc(sim.k2_field_gpu, **self.cuda_param_H2)
+
+            sim.k2_field = sim.k2_field_gpu.get()
+
+            #"Calculate the bins:"
+            #sim.calc_k2_bins(lat)
+
+            #"Calculate into which bin an element of sim.k2_field_gpu belongs:"
+            #self.k2_arg = []
+            #self.k2_arg.append(sim.k2_field_gpu)
+            #self.k2_arg.append(sim.k2_bins_gpu)
+            #self.k2_arg.append(sim.k2_bin_id)
+            #self.k2_arg.append(np.int32(len(sim.k2_bins)))
+
+            #self.lin_evo_kernel.k2_bins_calc(*self.k2_arg, **self.cuda_param_H2)
+
+            "Free memory:"
+            sim.k2_field_gpu.gpudata.free()
+
+            "Use different binning for k2_eff spectra:"
+            sim.k_max = np.sqrt(sim.k2_field.max())/lat.dk
+
+            sim.k_bins = np.int32(np.floor(sim.k_max)) + 1
+
+            #sim.k2_bins_pos = sim.k2_bins[np.where(sim.k2_bins>=0.)]
+
+            #sim.k_bin_counts = (np.bincount(np.int32(np.floor(np.sqrt(
+            #    sim.k2_bins_pos)/lat.dk))))
+
+            for field in sim.fields:
+                "Number and energy spectra:"
+                field.n_k = np.zeros(sim.k_bins, dtype = np.float64)
+                field.rho_k = np.zeros(sim.k_bins, dtype = np.float64)
+                field.k2_rho_k = np.zeros(sim.k_bins, dtype = np.float64)
+
+                "Field spectra:"
+                field.S = np.zeros(sim.k_bins, dtype = np.float64)
+                field.k2_S = np.zeros(sim.k_bins, dtype = np.float64)
+
+                "Number of points in the bin:"
+                field.W = np.zeros(sim.k_bins, dtype = np.int32)
+                field.W_df = np.zeros(sim.k_bins, dtype = np.float64)
+        
+                "List of distinct k values used in the spectrums:"
+                field.k_vals = np.arange(0,sim.k_bins)*lat.dk
+            
         "Cuda function arguments used in rho and pressure kernels:"
         self.rp_arg = [sim.rho_gpu, sim.pres_gpu, sim.rhosum_gpu,
                        sim.pressum_gpu, sim.inter_sum_gpu]
@@ -1815,30 +2045,30 @@ class Evolution:
 
     def evo_step_2(self, lat, V, sim, dt):
         "Integrator order = 2"
-        evo_step_2(lat, V, sim, self.H2_kernels, self.H3_kernels,
+        evo_step_2(lat, V, sim, self.H2_kernel, self.H3_kernels,
                    self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
+                   self.cuda_H2_arg, self.cuda_H3_arg, dt)
         sim.add_to_lists(lat)
 
     def evo_step_4(self, lat, V, sim, dt):
         "Integrator order = 4"
-        evo_step_4(lat, V, sim, self.H2_kernels, self.H3_kernels,
+        evo_step_4(lat, V, sim, self.H2_kernel, self.H3_kernels,
                    self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
+                   self.cuda_H2_arg, self.cuda_H3_arg, dt)
         sim.add_to_lists(lat)
 
     def evo_step_6(self, lat, V, sim, dt):
         "Integrator order = 6"
-        evo_step_6(lat, V, sim, self.H2_kernels, self.H3_kernels,
+        evo_step_6(lat, V, sim, self.H2_kernel, self.H3_kernels,
                    self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
+                   self.cuda_H2_arg, self.cuda_H3_arg, dt)
         sim.add_to_lists(lat)
 
     def evo_step_8(self, lat, V, sim, dt):
         "Integrator order = 8"
-        evo_step_8(lat, V, sim, self.H2_kernels, self.H3_kernels,
+        evo_step_8(lat, V, sim, self.H2_kernel, self.H3_kernels,
                    self.cuda_param_H2, self.cuda_param_H3,
-                   self.cuda_arg, dt)
+                   self.cuda_H2_arg, self.cuda_H3_arg, dt)
         sim.add_to_lists(lat)
 
     def evo_step_bg_2(self, lat, V, sim, dt):
@@ -1897,8 +2127,10 @@ class Evolution:
     def print_id(self, array_type):
         """Print ids of the arrays in different cuda_args. This can be used to
            verify that the Cuda functions are pointing to correct arrays."""
-        if array_type == 'evo':
-            res = [id(x) for x in self.cuda_arg]
+        if array_type == 'evo_H2':
+            res = [id(x) for x in self.cuda_H2_arg]
+        if array_type == 'evo_H3':
+            res = [id(x) for x in self.cuda_H3_arg]
         elif array_type == 'rp':
             res = [id(x) for x in self.rp_arg]
         return res
@@ -1937,11 +2169,53 @@ class Evolution:
 
         
         "Cuda function arguments used in H2 and H3:"
-        self.cuda_arg = [sim.sum_gpu]
+        self.cuda_H2_arg = [[sim.sum_gpu]]
         for f in sim.fields:
-            self.cuda_arg.append(f.f_gpu)
+            self.cuda_H2_arg[0].append(f.f_gpu)
         for f in sim.fields:
-            self.cuda_arg.append(f.pi_gpu)
+            self.cuda_H2_arg[0].append(f.pi_gpu)
+
+        "Cuda function argument used in tensor perturbation kernel:"
+        if lat.gws:
+            self.cuda_H2_arg.append([sim.u11_gpu,
+                                     sim.u12_gpu,
+                                     sim.u22_gpu,
+                                     sim.u13_gpu,
+                                     sim.u23_gpu,
+                                     sim.u33_gpu,
+                                     sim.piu11_gpu,
+                                     sim.piu12_gpu,
+                                     sim.piu22_gpu,
+                                     sim.piu13_gpu,
+                                     sim.piu23_gpu,
+                                     sim.piu33_gpu])
+
+        self.cuda_H3_arg = [[sim.sum_gpu]]
+        for f in sim.fields:
+            self.cuda_H3_arg[0].append(f.f_gpu)
+        for f in sim.fields:
+            self.cuda_H3_arg[0].append(f.pi_gpu)
+        """Following arguments are used in H3 kernels to calculate
+           tensor perturbation source terms:"""
+        if lat.gws:
+            self.cuda_H3_arg[0].extend([sim.piu11_gpu,sim.piu12_gpu,
+                                        sim.piu22_gpu,sim.piu13_gpu,
+                                        sim.piu23_gpu,sim.piu33_gpu])
+
+        "Cuda function arguments used in tensor perturbation Laplacian kernel:"
+        if lat.gws:
+            self.cuda_H3_arg.append([sim.u11_gpu,
+                                     sim.u12_gpu,
+                                     sim.u22_gpu,
+                                     sim.u13_gpu,
+                                     sim.u23_gpu,
+                                     sim.u33_gpu,
+                                     sim.piu11_gpu,
+                                     sim.piu12_gpu,
+                                     sim.piu22_gpu,
+                                     sim.piu13_gpu,
+                                     sim.piu23_gpu,
+                                     sim.piu33_gpu])
 
         self.cuda_param_H2 = dict(block=lat.cuda_block_1, grid=lat.cuda_grid,
                                   stream = sim.stream)
@@ -2296,17 +2570,20 @@ def H1_step(lat, sim, dt):
 
     sim.a = a0 - p0/(6.*lat.VL_reduced)*dt
 
-def H2_step1(lat, sim, H2_list, cuda_args, cuda_param_H2, dt):
-    """This function is written by write_integrator.py"""
+def H2_step1(lat, sim, H2_kernel, cuda_args, cuda_param_H2, dt):
+    """H2 evolution before H3"""
 
-    H2_list[0].evo(*cuda_args, **cuda_param_H2)
+    H2_kernel.evo1(*cuda_args[0], **cuda_param_H2)
 
     sim.p += -lat.VL*sim.rho_m0*dt
 
-def H2_step2(lat, sim, H2_list, cuda_args, cuda_param_H2, dt):
-    """This function is written by write_integrator.py"""
+    if lat.gws:
+        H2_kernel.gw_evo(*cuda_args[1], **cuda_param_H2)
 
-    H2_list[1].evo(*cuda_args, **cuda_param_H2)
+def H2_step2(lat, sim, H2_kernel, cuda_args, cuda_param_H2, dt):
+    """H2 evolution after H3"""
+
+    H2_kernel.evo2(*cuda_args[0], **cuda_param_H2)
 
     cuda.memcpy_dtoh_async(sim.sum_host, sim.sum_gpu.gpudata, sim.stream)
     sim.stream.synchronize()
@@ -2314,59 +2591,72 @@ def H2_step2(lat, sim, H2_list, cuda_args, cuda_param_H2, dt):
     sim.p += sum(sum(sim.sum_host)) - lat.VL*sim.rho_m0*(dt)
     #sim.p += sum(sum(sim.sum_gpu.get())) - lat.VL*sim.rho_m0*(2*dt)
 
-def H3_step(lat, V, sim, H3_list, cuda_args, cuda_param_H3, dt):
-    """This function is written by write_integrator.py"""
+    if lat.gws:
+        H2_kernel.gw_evo(*cuda_args[1], **cuda_param_H2)
 
-    for kernel in H3_list:
-        kernel.evo(*cuda_args, **cuda_param_H3)
+def H3_step(lat, V, sim, H3_list, cuda_args, cuda_param_H3, dt):
+    """H3 evolution"""
+
+    for kernel in H3_list[0]:
+        kernel.evo(*cuda_args[0], **cuda_param_H3)
+
+    "Evolve canonical momenta of tensor perturbations with the Laplacian term:"
+    if lat.gws:
+        for kernel in H3_list[1]:
+            kernel.evo(*cuda_args[1], **cuda_param_H3)
 
     sim.t += sim.a*dt
 
-def evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     "Second-order time evolution step"
 
     H1_step(lat, sim, dt/2)
 
     sim.h_array[:] = V.h_array(lat, sim.a, dt/2)[:]
 
-    for kernel in H2_list:
-        kernel.update_h(sim.h_array, sim.stream)
+    H2_kernel.update_h(sim.h_array, sim.stream)
 
     sim.f_array[:] = np.concatenate([V.f_array(lat, sim.a, dt),
                              sim.a**3.*dt*V.C_coeffs_np])[:]
 
-    for kernel in H3_list:
+    sim.gw_array[:] = V.gw_array(lat, sim.a, dt)[:]
+
+    for kernel in H3_list[0]:
         kernel.update_f(sim.f_array, sim.stream)
+
+    if lat.gws:
+        for kernel in H3_list[1]:
+            kernel.update_gw(sim.gw_array, sim.stream)
 
     sim.stream.synchronize()
 
-    H2_step1(lat, sim, H2_list, cuda_args, cuda_param_H2, dt/2)
-    H3_step(lat, V, sim, H3_list, cuda_args, cuda_param_H3, dt)
-    H2_step2(lat, sim, H2_list, cuda_args, cuda_param_H2, dt/2)
+    H2_step1(lat, sim, H2_kernel, cuda_H2_arg, cuda_param_H2, dt/2)
+    H3_step(lat, V, sim, H3_list, cuda_H3_arg, cuda_param_H3, dt)
+    H2_step2(lat, sim, H2_kernel, cuda_H2_arg, cuda_param_H2, dt/2)
 
     H1_step(lat, sim, dt/2)
 
     #sim.t += sim.a*dt
     sim.H = (-sim.p/(6*sim.a**2.*lat.VL_reduced))
 
-def evo_step_4(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_4(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     "Fourth-order time evolution step:"
     k = 4.
     l = 1.0/(k-1)
     c1 = 1.0/(2.0 - 2.0**l)
     c0 = 1.0 - 2.0*c1
 
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c0*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c0*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
 
-def evo_step_6_slow(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_6_slow(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     "Sixth-order time evolution step:"
     k = 6.
     l = 1.0/(k-1)
@@ -2374,15 +2664,15 @@ def evo_step_6_slow(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
     c0 = 1.0 - 2.0*c1
 
 
-    evo_step_4(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
-    evo_step_4(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c0*dt)
-    evo_step_4(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
+    evo_step_4(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
+    evo_step_4(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c0*dt)
+    evo_step_4(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
 
-def evo_step_6(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_6(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     """Sixth-order time evolution step.
        w_i values taken from B. Leimkuhler and S. Reich: Simulating Hamiltonian
        Dynamics."""
@@ -2392,38 +2682,38 @@ def evo_step_6(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
     w3 = -1.17767998417887100695
     w4 = 1 - 2*(w1+w2+w3)
 
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w1*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w2*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w3*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w4*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w3*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w2*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w2*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w3*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w4*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w3*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w2*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w1*dt)
 
-def evo_step_8_slow(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_8_slow(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     "Eight-order time evolution step:"
     k = 8.
     l = 1.0/(k-1)
     c1 = 1.0/(2.0 - 2.0**l)
     c0 = 1.0 - 2.0*c1
 
-    evo_step_6(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
-    evo_step_6(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c0*dt)
-    evo_step_6(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, c1*dt)
+    evo_step_6(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
+    evo_step_6(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c0*dt)
+    evo_step_6(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, c1*dt)
 
-def evo_step_8(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, dt):
+def evo_step_8(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, dt):
     """Eight-order time evolution step.
        w_i values taken from B. Leimkuhler and S. Reich: Simulating Hamiltonian
        Dynamics."""
@@ -2437,36 +2727,36 @@ def evo_step_8(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
     w7 = 0.31529309239676659663
     w8 = 1 - 2*(w1+w2+w3+w4+w5+w6+w7)
 
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w1*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w2*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w3*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w4*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w5*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w6*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w7*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w8*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w7*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w6*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w5*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w4*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w3*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w2*dt)
-    evo_step_2(lat, V, sim, H2_list, H3_list, cuda_param_H2, cuda_param_H3,
-               cuda_args, w1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w1*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w2*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w3*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w4*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w5*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w6*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w7*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w8*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w7*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w6*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w5*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w4*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w3*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w2*dt)
+    evo_step_2(lat, V, sim, H2_kernel, H3_list, cuda_param_H2, cuda_param_H3,
+               cuda_H2_arg, cuda_H3_arg, w1*dt)
 
 
 ###############################################################################
