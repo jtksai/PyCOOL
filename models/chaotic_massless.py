@@ -12,7 +12,7 @@ class Model:
 
     def __init__(self):
 
-        self.model_name = 'chaotic inflation'
+        self.model_name = 'massless chaotic inflation'
 
         "Model parameters and values:"
 
@@ -34,8 +34,8 @@ class Model:
         self.f10 = 1.714
         self.f20 = 1e-16*self.mpl
 
-        self.df1_dt0 = -0.7137133070120812430962278466136*self.m
-        self.df2_dt0 = 10.**-20.
+        self.df1_dt0 = 1e-20
+        self.df2_dt0 = 1e-20
 
         self.fields0 = [self.f10, self.f20]
         self.pis0 = [self.df1_dt0, self.df2_dt0]
@@ -43,19 +43,19 @@ class Model:
         "Mass unit that is used to define other variables:"
         self.m = np.sqrt(self.lamb)*self.f10
 
-        self.q = self.g2*self.f10**2/(4*self.m2f1)
+        #self.q = self.g2*self.f10**2/(4*self.m2f1)
 
         "List of the potential functions:"
 
         "Potentials functions of the fields including self-interactions:"
-        self.V_list = ["0.5*C1*f1**2","0.5*C2*f2**2"]
+        self.V_list = ["0.25*C1*f1**4","0.5*C2*f2**2"]
 
         "Interaction terms of the fields:"
         self.V_int = ["0.5*C3*f1**2*f2**2"]
 
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
-        self.C_coeff = [self.m2f1, self.m2f2, self.g2]
+        self.C_coeff = [self.lamb, self.m2f2, self.g2]
 
         "Numerical values for bare coefficients D1, D2, ..."
         self.D_coeff = []
@@ -70,13 +70,13 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(1024*self.m)
+        self.dtau = 2.5/(1024*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
 
         "Lattice side length:"
-        self.L = 1./self.m
+        self.L = 20./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -89,8 +89,15 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 256./self.m
+        self.t_fin = 5000./self.m
         self.t_fin_hom = 256./self.m
+
+        "If True write to file:"
+        self.saveQ = True#False#
+
+        "How frequently to save data:"
+        self.flush_freq = 256
+        self.flush_freq_hom = 128*8
 
         "Set if to use linearized evolution:"
         self.lin_evo = False#True#
@@ -101,25 +108,18 @@ class Model:
         "Set True to solve non-linearized evolution:"
         self.evoQ = True#False#
 
+        """Whether to solve tensor perturbations:"""
+        self.gwsQ = True#False#
+
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
         self.zetaQ = False#True#
-
-        """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 1e-12
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
-
-        "How frequently to save data:"
-        self.flush_freq = 256
-        self.flush_freq_hom = 128*8
-
-        "If True write to file:"
-        self.saveQ = True#False#
 
         "If True make a superfolder that has all the different simulations:"
         self.superfolderQ = False#True#

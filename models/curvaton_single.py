@@ -99,7 +99,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 1000./self.m
+        self.t_fin = 100./self.m
         self.t_fin_hom = 50./self.m
 
         "Use linearized evolution if True:"
@@ -125,7 +125,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to calculate rho and error:"
-        self.flush_freq = 8*64#256#*120
+        self.flush_freq = 1024*8*64#256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"

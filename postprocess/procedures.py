@@ -247,13 +247,13 @@ class Postprocess:
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
-                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
 
-                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
-                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    rho_cov = total_rho*(lat.dk/(2*np.pi))**3
 
                     field.rho_cov_list.append(rho_cov)
 
@@ -305,13 +305,13 @@ class Postprocess:
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
-                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
 
-                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
-                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    rho_cov = total_rho*(lat.dk/(2*np.pi))**3
 
                     field.rho_cov_list.append(rho_cov)
 
@@ -367,13 +367,13 @@ class Postprocess:
 
                     field.rel_num_list.append(rel_num/total_N)
 
-                    n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
-                    #n_cov = total_N*(lat.dk/(2*np.pi))**3
+                    #n_cov = total_N*(lat.dk/(2*np.pi*sim.a))**3
+                    n_cov = total_N*(lat.dk/(2*np.pi))**3
 
                     field.n_cov_list.append(n_cov)
 
-                    rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
-                    #rho_cov = total_rho*(lat.dk/(2*np.pi))**3
+                    #rho_cov = total_rho*(lat.dk/(2*np.pi*sim.a))**3
+                    rho_cov = total_rho*(lat.dk/(2*np.pi))**3
 
                     field.rho_cov_list.append(rho_cov)
 
