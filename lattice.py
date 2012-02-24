@@ -40,7 +40,7 @@ class Lattice:
     m = mass of that field which can be used also as a unit,
         i.e. time in units of 1/m etc.
 
-    precision = used precision.
+    precision = used precision. Options float or double.
 
     lin_order = Order of the linearized integrator.
     

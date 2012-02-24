@@ -639,6 +639,8 @@ def write_csv(lat, data_path, mode = 'non-lin', source = 'silo'):
         
             if lat.spect and mode == 'non-lin':
                 k_val = f.get_curve('field1'+'_S_k').x
+            if lat.gws and mode == 'non-lin':
+                k_val2 = f.get_curve('gw_spectrum').x
             if mode == 'non-lin':
                 t_val = f.get_curve('a').x
             elif mode == 'homog':
@@ -648,10 +650,12 @@ def write_csv(lat, data_path, mode = 'non-lin', source = 'silo'):
 
             csv_file = open(f_name,'w')
             writer = csv.writer(csv_file)
-            writer.writerow(['t_val','k_val'] + curves)
+            writer.writerow(['t_val','k_val','k_val2'] + curves)
             writer.writerow(t_val)
             if lat.spect and mode == 'non-lin':
                 writer.writerow(k_val)
+            if lat.gws and mode == 'non-lin':
+                writer.writerow(k_val2)
             for curve in curves:
                 writer.writerow(f.get_curve(curve).y)
         

@@ -26,7 +26,8 @@ from models.curvaton_single import *
 model = Model()
 
 "Create a lattice:"
-lat = Lattice(model, lin_order = 4, scale = model.scale, init_m = 'defrost_cpu')
+lat = Lattice(model, lin_order = 4, scale = model.scale,
+              init_m = 'defrost_cpu', precision='double')
 
 " Create a potential function object:"
 V = Potential(lat, model)

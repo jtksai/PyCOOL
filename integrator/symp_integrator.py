@@ -7,6 +7,7 @@ from pycuda.compiler import SourceModule
 import numpy as np
 
 from lattice import *
+from misc_functions import *
 import init.field_init as fi
 
 def kernel_H2_gpu_code(lat, write_code=False):
@@ -523,8 +524,9 @@ class Simulation:
 
         if self.lin_evo or lat.k2_effQ:
             "Array of k^2 values corresponding to discrete Laplacian:"
-            self.k2_field_gpu = gpuarray.to_gpu(np.zeros(lat.dims_k))
-            self.k2_field = np.zeros(lat.dims_k)
+            self.k2_field_gpu = gpuarray.to_gpu(np.zeros(lat.dims_k,
+                                                         dtype = lat.prec_real))
+            self.k2_field = np.zeros(lat.dims_k,dtype = np.float64)
             self.k2_bins = self.zeros
             self.k2_bins_gpu = gpuarray.to_gpu(self.k2_bins)
             self.k2_bin_id = gpuarray.to_gpu(self.zeros_i)
@@ -679,7 +681,10 @@ class Simulation:
 
             print '\nCalculating momentum vectors k_x, k_y and k_z\n'
 
-            gws.calc_k_eff(self.kx, self.ky, self.kz, self.k_abs, lat.dx)
+            "Not sure if gws.calc_k_eff is correct?"
+            #gws.calc_k_eff(self.kx, self.ky, self.kz, self.k_abs, lat.dx)
+
+            gws.calc_k(self.kx, self.ky, self.kz, self.k_abs, lat.dk)
 
             "This are used when calculating gw spectra:"
             self.k_max_gw = self.k_abs.max()/lat.dk
@@ -688,7 +693,7 @@ class Simulation:
 
             self.k_bins_gw = np.int32(np.floor(self.k_max_gw)) + 1
 
-            self.gw_spect_k = np.zeros(self.k_bins_gw, dtype = np.float64)
+            self.gw_spect_k = np.zeros(self.k_bins_gw, dtype = lat.prec_real)
 
             "Count array when binning spectra:"
             self.W_gw = np.zeros(self.k_bins_gw, dtype = np.int32)
@@ -783,7 +788,7 @@ class Simulation:
 
         k2n = lat.dx**2.*(self.k2_field_gpu.get())
 
-        tmp = np.array(sorted(set(k2n.flatten())),dtype=np.float64)
+        tmp = np.array(sorted(set(k2n.flatten())),dtype=lat.prec_real)
         diff_list = np.diff(tmp)
 
         k2_bins = [tmp[0]]
@@ -1902,7 +1907,7 @@ class Evolution:
             """Calculate k2_eff-terms needed in the perturbation evolution:"""
             self.lin_evo_kernel.k2_calc(sim.k2_field_gpu, **self.cuda_param_H2)
 
-            sim.k2_field = sim.k2_field_gpu.get()
+            sim.k2_field = (sim.k2_field_gpu.get()).astype(np.float64)
  
             "Calculate the bins:"
             sim.calc_k2_bins(lat)
@@ -1955,22 +1960,10 @@ class Evolution:
 
 
         if sim.lin_evo == False and lat.k2_effQ:
-            """Calculate k2_eff-terms needed in the spectra:"""
+            """Calculate k2_eff-terms used in the spectra:"""
             self.lin_evo_kernel.k2_calc(sim.k2_field_gpu, **self.cuda_param_H2)
 
-            sim.k2_field = sim.k2_field_gpu.get()
-
-            #"Calculate the bins:"
-            #sim.calc_k2_bins(lat)
-
-            #"Calculate into which bin an element of sim.k2_field_gpu belongs:"
-            #self.k2_arg = []
-            #self.k2_arg.append(sim.k2_field_gpu)
-            #self.k2_arg.append(sim.k2_bins_gpu)
-            #self.k2_arg.append(sim.k2_bin_id)
-            #self.k2_arg.append(np.int32(len(sim.k2_bins)))
-
-            #self.lin_evo_kernel.k2_bins_calc(*self.k2_arg, **self.cuda_param_H2)
+            sim.k2_field = (sim.k2_field_gpu.get()).astype(np.float64)
 
             "Free memory:"
             sim.k2_field_gpu.gpudata.free()
@@ -2242,7 +2235,7 @@ class Evolution:
             self.lin_e_arg.append(sim.a_gpu)
             self.lin_e_arg.append(sim.p_gpu)
             self.lin_e_arg.append(sim.t_gpu)
-            self.lin_e_arg.append(np.float64(lat.dtau_hom))
+            self.lin_e_arg.append(lat.prec_real(lat.dtau_hom))
             self.lin_e_arg.append(np.int32(sim.steps))
             self.lin_e_arg.append(sim.k2_bins_gpu)
 

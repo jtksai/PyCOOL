@@ -14,6 +14,52 @@ cdef extern from "math.h":
 @cython.boundscheck(False)
 @cython.wraparound(False)
 
+def calc_k(np.ndarray[dtype_t, ndim=3] k_x,
+               np.ndarray[dtype_t, ndim=3] k_y,
+               np.ndarray[dtype_t, ndim=3] k_z,
+               np.ndarray[dtype_t, ndim=3] k_abs,
+               dtype_t dk_val):
+
+    cdef int i, x, y, z
+    cdef int px, py, pz
+    cdef dtype_t pi, dk, k_len
+    cdef int dimx, dimy, dimz, dimz2, N
+
+    if k_x is None or k_y is None or k_z is None:
+        raise ValueError("Input arrays cannot be None")
+
+    dimx = k_x.shape[2]
+    dimy = k_x.shape[1]
+    dimz2 = k_x.shape[0]
+
+    N = dimx
+
+    pi = np.pi
+    dk = dk_val
+
+    for x from 0 <= x < dimx:
+        px = x if x <= dimx/2 else x - dimx
+
+        for y from 0 <= y < dimy:
+            py = y if y <= dimy/2 else y - dimy
+
+            for z from 0 <= z < dimz2:
+                pz = z
+
+                k_len = sqrt(float(px*px + py*py + pz*pz))
+
+                if k_len > 0.:
+                    k_x[z,y,x] = px/k_len
+                    k_y[z,y,x] = py/k_len
+                    k_z[z,y,x] = pz/k_len
+                    k_abs[z,y,x] = k_len*dk
+                else:
+                    k_x[z,y,x] = 1./sqrt(3.)#k_x
+                    k_y[z,y,x] = 1./sqrt(3.)#k_y
+                    k_z[z,y,x] = 1./sqrt(3.)#k_z
+                    k_abs[z,y,x] = 0.0
+
+
 def calc_k_eff(np.ndarray[dtype_t, ndim=3] k_eff_x,
                np.ndarray[dtype_t, ndim=3] k_eff_y,
                np.ndarray[dtype_t, ndim=3] k_eff_z,
@@ -22,7 +68,7 @@ def calc_k_eff(np.ndarray[dtype_t, ndim=3] k_eff_x,
 
     cdef int i, x, y, z
     cdef int px, py, pz
-    cdef dtype_t pi
+    cdef dtype_t pi, dx, k_abs
     cdef int dimx, dimy, dimz, dimz2, N
 
     if k_eff_x is None or k_eff_y is None or k_eff_z is None:

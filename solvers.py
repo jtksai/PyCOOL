@@ -4,6 +4,7 @@ import integrator.symp_integrator as si
 import postprocess.procedures as pp
 
 from lattice import *
+from misc_functions import *
 
 """
 ####################################################################

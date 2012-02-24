@@ -76,7 +76,7 @@ class Model:
         self.dtau_hom = 1./(10000*self.m)
 
         "Lattice side length:"
-        self.L = 20./self.m
+        self.L = 10./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -89,7 +89,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 5000./self.m
+        self.t_fin = 10./self.m
         self.t_fin_hom = 256./self.m
 
         "If True write to file:"
@@ -162,7 +162,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False#True#
+        self.testQ = True#False#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""

@@ -814,7 +814,7 @@ class Postprocess:
 
     def tensorTT_ij(self,lat, sim, u_mat,i,j):
         """Calculate the traceless-tranverse part of tensor perturbation
-           component h_{ij}:"""
+           component u_{ij}. u_mat defined in tensor_TT:"""
 
         if i == j:
             delta = 1.0

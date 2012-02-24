@@ -116,7 +116,7 @@ class Model:
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
+        self.gwsQ = False#True#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 4e-13
@@ -173,7 +173,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False#True#
+        self.testQ = True#False#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
@@ -185,7 +185,7 @@ class Model:
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
            Note that this will also affect the used block size"""
-        self.max_reg = None
+        self.max_reg = 28#None
 
         
         """For curvature perturbation studies disable post-processing

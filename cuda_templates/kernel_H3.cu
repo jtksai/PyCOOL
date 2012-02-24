@@ -176,6 +176,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // z = {{ DIM_Z_c }}-1 calculated seperately
 
     volatile unsigned int i;
+//#pragma unroll {% set foo = DIM_Z_c-1 %}{{ foo }}
     for(i=1; i<({{ DIM_Z_c }}-1); i++)
     {
         in_idx  += stride;

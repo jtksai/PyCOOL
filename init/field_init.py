@@ -86,6 +86,9 @@ def sample_defrost_cpu(lat, func, gamma, m2_eff):
     
     tmp = np.fft.irfftn(Fk)
 
+    ker_gpu.gpudata.free()
+    tmp_gpu.gpudata.free()
+
     return tmp
 
 def sample_defrost_cpu2(lat, func, gamma, m2_eff):
