@@ -106,7 +106,7 @@ def V_calc(V_string, n, field_list, field_i, power_list,
 
     if kernel_type=='H3':
         const_name='f_coeff'
-        i0 = 3
+        i0 = 4
         const2_name='d_coeff'
         i1 = 0
     elif kernel_type=='rp':

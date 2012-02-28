@@ -116,7 +116,7 @@ class Model:
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = False#True#
+        self.gwsQ = True#False#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 4e-13
@@ -125,7 +125,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to calculate rho and error:"
-        self.flush_freq = 1024*8*64#256#*120
+        self.flush_freq = 4*64#256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
@@ -150,6 +150,9 @@ class Model:
 
         "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
+
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'hlattice'#'defrost'#
 
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth

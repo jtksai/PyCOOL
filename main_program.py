@@ -1,4 +1,6 @@
 import pycuda.driver as cuda
+import pycuda.gpuarray as gpuarray
+
 import numpy as np
 
 import integrator.symp_integrator as si
@@ -100,7 +102,6 @@ if model.evoQ:
     solv.run_non_linear(lat, V, sim, evo, postp, model, start, end,
                         data_path, order = 4, endQ = 'time', print_Q = True,
                         print_w = False)
-
 
 if sim.i0 != 0:
     "Print simulation time info:"

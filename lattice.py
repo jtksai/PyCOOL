@@ -118,6 +118,8 @@ class Lattice:
 
         self.k2_effQ = True if model.spect_m == 'k2_eff' else False
 
+        self.discQ = model.discQ
+
         self.field_lp = model.field_lpQ
 
         self.stats = model.statsQ
@@ -244,7 +246,7 @@ class Lattice:
         Taken from "Michael Patra, Mikko Karttunen: Stencils with isotropic
         discretization error for differential operators"."""
 
-        if precision == "float":
+        if precision == "float" and self.discQ == 'defrost':
             self.prec_real = np.float32
             self.prec_complex = np.complex64
             self.prec_string = "float"
@@ -259,8 +261,10 @@ class Lattice:
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float32)
             self.cc_a = self.cc
+            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+                               dtype=np.float32)
 
-        elif precision == "double":
+        elif precision == "double" and self.discQ == 'defrost':
             self.prec_real = np.float64
             self.prec_complex = np.complex128
             self.prec_string = "double"
@@ -275,6 +279,46 @@ class Lattice:
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float64)
             self.cc_a = self.cc
+            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+                               dtype=np.float64)
+
+        elif precision == "double" and self.discQ == 'hlattice':
+            self.prec_real = np.float64
+            self.prec_complex = np.complex128
+            self.prec_string = "double"
+            self.complex_string = "double2"
+            self.f_term=''
+            "Set the upper limit for the number of registers per thread:"
+            if model.max_reg == None:
+                self.reglimit = '32'
+            else:
+                self.reglimit = str(model.max_reg)
+            "Laplacian and partial derivatice discretization coefficients:"
+            self.cc = np.array([-390./144.,16./144.,64./144.,-16./144.,1./144.],
+                               dtype=np.float64)
+            self.cd = np.array([8./12.,-1./12.],
+                               dtype=np.float64)
+            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+                               dtype=np.float64)
+            self.radius = 4
+
+        if precision == "float" and self.discQ == 'hlattice':
+            self.prec_real = np.float32
+            self.prec_complex = np.complex64
+            self.prec_string = "float"
+            self.complex_string = "float2"
+            self.f_term='f'
+            "Set the upper limit for the number of registers per thread:"
+            if model.max_reg == None:
+                self.reglimit = '24'
+            else:
+                self.reglimit = str(model.max_reg)
+            "Laplacian and partial derivatice discretization coefficients:"
+            self.cc = np.array([-390./144.,16./144.,64./144.,-1./144.,1./144.],
+                               dtype=np.float32)
+            self.cd = np.array([8./12.,-1./12.],
+                               dtype=np.float32)
+            self.radius = 4
 
         "Define the field variables:"
 
@@ -307,8 +351,6 @@ class Potential:
         "List of potential functions and interaction terms:"
         self.v_l = model.V_list
         self.v_int = model.V_int
-
-        
 
         "Form the total potential and interaction functions:"
         if len(self.v_l)>0:
@@ -467,7 +509,7 @@ class Potential:
             self.d_coeff_l = len(self.D_coeff)
         else:
             self.d_coeff_l = 1
-        self.f_coeff_l = 3 + self.n_coeffs
+        self.f_coeff_l = 4 + self.n_coeffs
         self.g_coeff_l = 3 + self.n_coeffs
         self.h_coeff_l = 2
         self.p_coeff_l = 2 + self.n_coeffs
@@ -486,10 +528,12 @@ class Potential:
 
     def f_array(self, lat, a, dt):
         """Constant memory array f_coeff coefficients.
-           Note that the third term depends on the definition of
-           the discrete derivative."""
+           Note that the third term is related to the discrete derivative
+           of the scalar fields when using 'defrost' discretization
+           and the fourth is used 'hlattice' dicretization is used."""
         return np.array([a, a*dt*lat.dx**(-2.),
-                         0.5*lat.mpl**2*a**2.*dt*lat.dx**(-2.)],
+                         0.5*lat.mpl**2*a**2.*dt*lat.dx**(-2.),
+                         2*lat.mpl**2*a**2.*dt*lat.dx**(-2.)],
                         dtype = lat.prec_real)
 
     def gw_array(self, lat, a, dt):

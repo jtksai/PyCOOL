@@ -17,6 +17,7 @@ and from DEFROST http://www.sfu.ca/physics/cosmology/defrost .
 */
 
 
+__constant__ {{ type_name_c }} c1_coeff[2];
 __constant__ {{ type_name_c }} c_coeff[4];
 __constant__ {{ type_name_c }} f_coeff[{{ f_coeff_l_c }}];
 //{% if d_coeff_l_c > 0 %} __constant__ {{ type_name_c }} d_coeff[{{ d_coeff_l_c }}]; {% endif %}
@@ -76,7 +77,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // where iy_adjusted and ix_adjusted take into accounted the periodicity
     // of the lattice
     volatile unsigned int in_idx = period(blockIdx.y*(blockDim.y-2)+threadIdx.y-1,blockIdx.y,{{ grid_y_c }},{{ DIM_Y_c }})*{{ DIM_X_c }} + period(blockIdx.x*(blockDim.x-2)+threadIdx.x-1,blockIdx.x,{{ grid_x_c }},{{ DIM_X_c }});
-    volatile unsigned int stride = {{ stride_c }};
+    //volatile unsigned int stride = {{ stride_c }};
 
     {{ type_name_c }} f{{ field_i_c }};
     //{{ type_name_c }} pi{{ field_i_c }};
@@ -95,16 +96,18 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // sdwn_data from the top of the lattice
     // due to the periodicity of the lattice
 
-    sdwn_data[threadIdx.y][threadIdx.x] = field{{ field_i_c }}[in_idx + ({{ DIM_Z_c }} - 1)*stride];
+    sdwn_data[threadIdx.y][threadIdx.x] = field{{ field_i_c }}[in_idx + ({{ DIM_Z_c }} - 1)*{{ stride_c }}];
     smid_data[threadIdx.y][threadIdx.x] = field{{ field_i_c }}[in_idx];
-    sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx + stride];
+    sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx + {{ stride_c }}];
 
     __syncthreads();
 
     //////////////////////////////////////////////////////////
     // Calculate values only for the inner points of the block
+    {% set blockx =  block_x_c -1 %}
+    {% set blocky =  block_y_c -1 %}
 
-    if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
+    if(((threadIdx.x>0)&&(threadIdx.x<({{ blockx }})))&&((threadIdx.y>0)&&(threadIdx.y<({{ blocky }}))))
     {
         f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
         //pi{{ field_i_c }} = pi{{ field_i_c }}_m[in_idx];		// field derivative
@@ -146,7 +149,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
-        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        pi{{ field_i_c }}_m[in_idx] = D2f;
 
     //  Note that -4*V_interaction included for the last field
         sumi = f{{ field_i_c }}*D2f {{ V_c }};
@@ -171,15 +175,16 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
      }
 
+    {% set foo = DIM_Z_c-1 %}
     /////////////////////////////////////////////////
-    // advance in z direction until z={{ DIM_Z_c }}-1
-    // z = {{ DIM_Z_c }}-1 calculated seperately
+    // advance in z direction until z={{ foo }}
+    // z = {{ foo }} calculated seperately
 
     volatile unsigned int i;
-//#pragma unroll {% set foo = DIM_Z_c-1 %}{{ foo }}
-    for(i=1; i<({{ DIM_Z_c }}-1); i++)
+//#pragma unroll {{ foo }}
+    for(i=1; i<({{ foo }}); i++)
     {
-        in_idx  += stride;
+        in_idx  += {{ stride_c }};
 
         __syncthreads();
 
@@ -189,14 +194,14 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
 	sdwn_data[threadIdx.y][threadIdx.x] = smid_data[threadIdx.y][threadIdx.x];
 	smid_data[threadIdx.y][threadIdx.x] = sup_data[threadIdx.y][threadIdx.x];
-	sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx+stride];
+	sup_data[threadIdx.y][threadIdx.x]  = field{{ field_i_c }}[in_idx+{{ stride_c }}];
        
 	__syncthreads();
 
 	///////////////////////////////////////////////////////////////////
 	// Calculate values only for the inner points of the thread block
 
-	if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
+	if(((threadIdx.x>0)&&(threadIdx.x<({{ blockx }})))&&((threadIdx.y>0)&&(threadIdx.y<({{ blocky }}))))
 	{
 
             f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
@@ -239,7 +244,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
 
-          pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+          //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        pi{{ field_i_c }}_m[in_idx] = D2f;
 
         //  Note that -4*V_interaction included for the last field
           sumi += f{{ field_i_c }}*D2f {{ V_c }};
@@ -270,7 +276,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //////////////////////////////////////////
     // The upper most slice of the lattice
 
-    in_idx  += stride;
+    in_idx  += {{ stride_c }};
 
     __syncthreads();
 
@@ -282,7 +288,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     __syncthreads();
 
-    if(((threadIdx.x>0)&&(threadIdx.x<({{ block_x_c }}-1)))&&((threadIdx.y>0)&&(threadIdx.y<({{ block_y_c }}-1))))
+    if(((threadIdx.x>0)&&(threadIdx.x<({{ blockx }})))&&((threadIdx.y>0)&&(threadIdx.y<({{ blocky }}))))
     {
 
         f{{ field_i_c }} = smid_data[threadIdx.y][threadIdx.x]; 	// current field value
@@ -322,7 +328,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
-        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        pi{{ field_i_c }}_m[in_idx] = D2f;
 
     //  Note that -4*V_interaction included for the last field
         sumi += f{{ field_i_c }}*D2f {{ V_c }};
