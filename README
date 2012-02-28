@@ -50,8 +50,11 @@ Files included:
 
   - CUDA and template files:
     - gpu_3dconv.cu
+    - kernel_gws.cu
+    - kernel_gws_new.cu
     - kernel_H2.cu
     - kernel_H3.cu
+    - kernel_H3_new.cu
     - kernel_k2.cu
     - kernel_linear_evo.cu
     - pd_kernel.cu
@@ -60,6 +63,7 @@ Files included:
 
   - Model files:
     - chaotic.py
+    - chaotic_massless.py
     - curvaton.py
     - curvaton_si.py
     - curvaton_single.py
@@ -304,16 +308,40 @@ the necessary data from zeta_data.csv files stored in the used superfolder.
 
 ------------------------------------------------------
 
-7 To Do list/Improvements
+7 Tensor perturbations
 
-- Possibility to calculate the evolution gravitational wave tensor
+Tensor perturbations are solved with the method presented in 'A Gravitational
+Wave Background from Reheating after Hybrid Inflation'
+http://arxiv.org/abs/0707.0839v2 meaning that the tensor components are solved
+separately and the transverse-traceless part is extracted only when needed.
+
+Gravitational waves are solved if self.gwsQ == True in the model file.
+
+Note that this method has not been tested thoroughly. Especially the
+used projector operators should be verified.
+
+------------------------------------------------------
+
+8 Different dicretizations
+
+PyCOOL has two different dicretizations implemented: the one presented in
+DEFROST and the one used in HLattice. The latter of these is a more general one
+that uses a spatially fourth order accurate stencil and is also more suitable
+for a multi-GPU implementation.
+
+The used stencil can be currently chosen with the self.discQ parameter in
+the model file by setting it equal to 'defrost' or 'hlattice'.
+
+------------------------------------------------------
+
+9 To Do list/Improvements
 
 - Multi-GPU support should be included. This might however take some
 work due to the periodicity of the lattice.
 
 - OpenCL support would allow to run the simulations also on AMD Radeon cards.
   Kernel functions would have to be however rewritten (completely?) and also
-  tested on Radeon cards. This might take a long time and lot of work.
+  tested on Radeon cards. This might take a long time and a lot of work.
 
 ------------------------------------------------------
 This is an example of an .aksetup-defaults.py file.
