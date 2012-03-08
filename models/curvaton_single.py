@@ -116,10 +116,10 @@ class Model:
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
+        self.gwsQ = False#True#
 
         "The reference value at which curvature perturbation is calculated:"
-        self.H_ref = 4e-13
+        self.H_ref = 4e-11
 
         "Number of different simulations to run with identical initial values:"
         self.sim_num = 1
@@ -135,7 +135,7 @@ class Model:
         self.superfolderQ = False#True#
 
         "Name of the superfolder:"
-        self.superfolder = 'zeta_run_6'
+        self.superfolder = 'zeta_run_7'
 
         """If True multiplies energy densities with 1/m^2.
             VisIt might not plot properly very small densities."""
@@ -145,20 +145,28 @@ class Model:
            the Silo files:"""
         self.fieldsQ = False#True#
 
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'defrost'#'latticeeasy'#'hlattice'#
+
         "If spectQ = True calculate spectrums:"
         self.spectQ = True#False#
 
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
+
+        #This has been depracated:"
+        """The used method to calculate the other spectra.
+           Options are 'latticeeasy', 'defrost'(Defrost uses
+           an aliasing polynomial to smoothen the spectra) or
+           'k2_eff' which uses k^2_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        #self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
+
         "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
-
-        "The used discretization. Options 'defrost' or 'hlattice'."
-        self.discQ = 'hlattice'#'defrost'#
-
-        """The used method to calculate spectrums. Options 'latticeeasy' and
-           'defrost'. Defrost uses aliasing polynomial to smooth
-           the spectrums. 'k2_eff' uses k^2_eff related to the discretized
-           Laplacian to calculate the spectra."""
-        self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#
@@ -176,7 +184,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = True#False#
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
@@ -197,6 +205,7 @@ class Model:
             self.evoQ = False
             self.spectQ = False
             self.gwsQ = False
+            self.sim_num = 20
             self.distQ = False
             self.statsQ = False
             self.fieldsQ = False
@@ -204,6 +213,6 @@ class Model:
             self.field_lpQ = False
             self.testQ = False
             self.m2_effQ = False
-            self.flush_freq = 256*120*100000
+            self.flush_freq = 256#*120*100000
             self.superfolderQ = True
             self.saveQ = False

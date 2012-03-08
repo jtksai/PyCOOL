@@ -153,7 +153,9 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
         if model.zetaQ:
 
             #These might have to be edited for different models:"
-            "Calculate ln(a) and omega_curv at H_ref:"
+            """Calculate ln(a) and omega_curv at H_ref.
+               Note that this uses linear interpolation.
+               Could use also other method."""
             ln_a = np.interp(-np.log(model.H_ref),-np.log(sim.flush_H),
                              np.log(sim.flush_a))
             ln_a_list.append(ln_a)
@@ -161,6 +163,21 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
             r = np.interp(-np.log(model.H_ref),-np.log(sim.flush_H),
                           sim.fields[0].omega_list)
             r_list.append(r)
+
+            """
+            "This uses second order polynomial fit to data:"
+            p_ln_a = np.poly1d(np.polyfit(-np.log(sim.flush_H),
+                                      np.log(sim.flush_a),
+                                      2))
+            ln_a2 = p_ln_a(-np.log(model.H_ref))
+            
+            p_r = np.poly1d(np.polyfit(-np.log(sim.flush_H),
+                                      sim.fields[0].omega_list,
+                                      2))
+            r2 = p_r(-np.log(model.H_ref))
+            
+            print 'lna ', (ln_a-ln_a2)/ln_a, 'r ', (r-r2)/r
+            """
 
         "Re-initialize system:"
         if model.sim_num > 1 and i < model.sim_num:

@@ -78,6 +78,78 @@ def kernel_pd_gpu_code(lat, V, field_i, write_code=False):
                         options=['-maxrregcount='+lat.reglimit])
 
 
+def kernel_k_gpu_code(lat, V, write_code=False):
+    """
+    Read kernel template from a file and compile a sourcemodule.
+    Different values are read from Lattice Object lat and
+    potential Object V."""
+
+
+    kernel_name = 'kernel_k_vec'
+
+    f = codecs.open('cuda_templates/'+kernel_name+'.cu','r',encoding='utf-8')
+    evo_code = f.read()
+    f.close()
+
+    tpl = Template(evo_code)
+
+    if lat.discQ == 'hlattice' and lat.radius == 4:
+        radius = 4
+    else:
+        radius = 2
+
+    pi = np.pi
+    w = 2*pi/lat.n
+    w_s = '{number:.{digits}}'.format(number=w,
+                                      digits=17,
+                                      type = 'e')
+
+
+    c0 = -64./15.
+    c1 = 2*7./15.
+    c2 = 4*1./10.
+    c3 = 8*1./30.
+    c = [c0, c1, c2, c3]
+    c_s = []
+    for x in c:
+        c_s.append('{number:.{digits}}'.format(number=x,
+                                               digits=17,
+                                               type = 'e'))
+
+    dk_s = '{number:.{digits}}'.format(number=lat.dx**-1.,
+                                        digits=17,
+                                        type = 'e')
+
+    dk2_s = '{number:.{digits}}'.format(number=lat.dx**-2.,
+                                        digits=17,
+                                        type = 'e')
+
+
+    f_code = tpl.render(real_name_c = lat.prec_string,
+                        complex_name_c = lat.complex_string,
+                        DIM_X = lat.dimx,
+                        DIMZ2 = lat.dimz2,
+                        stride = lat.stride,
+                        fields_c = lat.fields, 
+                        w_c = w_s,
+                        ct_0 = c_s[0],
+                        ct_1 = c_s[1],
+                        ct_2 = c_s[2],
+                        ct_3 = c_s[3],
+                        dk = dk_s,
+                        dk2 = dk2_s,
+                        radius_c = radius)
+
+    if write_code==True :
+        g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
+                        encoding='utf-8')
+        g.write(f_code)
+        g.close()
+
+    return SourceModule(f_code.encode( "utf-8" ),
+                        options=['-maxrregcount=' + lat.reglimit])
+
+
 class Pd_Kernel:
     def __init__(self, lat, V, field_i, write_code=False):
         self.mod = kernel_pd_gpu_code(lat, V, field_i, write_code)
@@ -102,10 +174,18 @@ class Pd_Kernel:
     def read_p(self,x):
         cuda.memcpy_dtoh(x,self.pc_add[0])
 
+class k_Kernel:
+    "Used to evolve the canonical momentums of the fields"
+    def __init__(self, lat, V, sim, write_code=False):
+        self.mod = kernel_k_gpu_code(lat, V, write_code)
+        self.k_vec_calc = self.mod.get_function('gpu_k_vec')
 
 
 class Postprocess:
-    def __init__(self, lat, V, write_code=True):
+    def __init__(self, lat, V, sim, write_code=True):
+
+        #import postprocess.calc_gw_spect as gws
+        import postprocess.calc_spect as calc
 
         print 'Compiling necessary post-processing kernels:'
 
@@ -118,7 +198,87 @@ class Postprocess:
 
         for kernel in self.pd_kernels:
             kernel.update_d(V.D_coeffs_np)
-            
+
+
+        if lat.spect or lat.gws:
+
+            print '\nCalculating momentum vectors k_x, k_y and k_z\n'
+
+            if lat.discQ == 'defrost':
+                if lat.gws and lat.spect_m_gw == 'std':
+                    calc.calc_k(sim.kx, sim.ky, sim.kz, sim.k_abs_gw, lat.dk)
+                elif lat.gws and lat.spect_m_gw != 'std':
+                    calc.calc_k_eff_2(sim.kx, sim.ky, sim.kz, sim.k_abs_gw,
+                                      lat.dx)
+                calc.calc_k_eff_df(sim.k_abs, lat.dx)
+            if lat.discQ == 'latticeeasy':
+                if lat.gws and lat.spect_m_gw == 'std':
+                    calc.calc_k(sim.kx, sim.ky, sim.kz, sim.k_abs_gw, lat.dk)
+                elif lat.gws and lat.spect_m_gw != 'std':
+                    calc.calc_k_eff_2(sim.kx, sim.ky, sim.kz, sim.k_abs_gw,
+                                      lat.dx)
+                calc.calc_k_eff_le(sim.k_abs, lat.dx)
+            elif lat.discQ == 'hlattice':
+                if lat.radius == 2:
+                    calc.calc_k_eff_2(sim.kx, sim.ky, sim.kz,
+                                      sim.k_abs, 1.0/lat.dx)
+                    if lat.gws and lat.spect_m_gw == 'std':
+                        calc.calc_k(sim.kx, sim.ky, sim.kz, sim.k_abs_gw,
+                                    lat.dk)
+                    elif lat.gws and lat.spect_m_gw != 'std':
+                        sim.k_abs_gw = sim.k_abs                    
+                if lat.radius == 4:
+                    calc.calc_k_eff_4(sim.kx, sim.ky, sim.kz,
+                                      sim.k_abs, 3*lat.dx)
+                    if lat.gws and lat.spect_m_gw == 'std':
+                        calc.calc_k(sim.kx, sim.ky, sim.kz, sim.k_abs_gw,
+                                    lat.dk)
+                    elif lat.gws and lat.spect_m_gw != 'std':
+                        sim.k_abs_gw = sim.k_abs              
+
+
+
+
+            "Use different binning for k2_eff spectra:"
+            #sim.k_max = np.sqrt(sim.k2_field.max())/lat.dk
+            sim.k_max = sim.k_abs.max()/lat.dk
+
+            sim.k_bins = np.int32(np.floor(sim.k_max)) + 1
+
+            lat.spect_l = sim.k_bins
+
+            for field in sim.fields:
+                "Number and energy spectra:"
+                field.n_k = np.zeros(sim.k_bins, dtype = np.float64)
+                field.rho_k = np.zeros(sim.k_bins, dtype = np.float64)
+                field.k2_rho_k = np.zeros(sim.k_bins, dtype = np.float64)
+
+                "Field spectra:"
+                field.S = np.zeros(sim.k_bins, dtype = np.float64)
+                field.k2_S = np.zeros(sim.k_bins, dtype = np.float64)
+
+                "Number of points in the bin:"
+                field.W = np.zeros(sim.k_bins, dtype = np.int32)
+                field.W_df = np.zeros(sim.k_bins, dtype = np.float64)
+        
+                "List of distinct k values used in the spectrums:"
+                field.k_vals = np.arange(0,sim.k_bins)*lat.dk
+
+
+
+            if lat.gws:
+                "This are used when calculating gw spectra:"
+                sim.k_max_gw = sim.k_abs_gw.max()/lat.dk
+
+                sim.k_vec = [sim.kx, sim.ky, sim.kz]
+
+                sim.k_bins_gw = np.int32(np.floor(sim.k_max_gw)) + 1
+
+                sim.gw_spect_k = np.zeros(sim.k_bins_gw, dtype = lat.prec_real)
+
+                "Count array when binning spectra:"
+                sim.W_gw = np.zeros(sim.k_bins_gw, dtype = np.int32)
+
 
         print "-" * 79
 
@@ -169,7 +329,7 @@ class Postprocess:
 
         import postprocess.calc_spect as calc
 
-        method = lat.spect_method
+        method = lat.spect_m
 
         a = sim.a
         p = sim.p
@@ -324,7 +484,7 @@ class Postprocess:
                                           Pik.real, Pik.imag,
                                           field.W, field.S, field.k2_S,
                                           field.n_k, field.rho_k,
-                                          field.k2_rho_k, sim.k2_field,
+                                          field.k2_rho_k, sim.k_abs,
                                           lat.dk, dk_inv, field.w_k,
                                           a_term, p_term, coeff)
 
@@ -439,9 +599,9 @@ class Postprocess:
 
             "Range of momentum values:"
             if lat.k2_effQ:
-                k_val = np.arange(0,sim.k_bins)*lat.dk
+                k_val = np.arange(0,lat.spect_l)*lat.dk
             else:
-                k_val = np.arange(0,lat.ns)*lat.dk
+                k_val = np.arange(0,lat.spect_l)*lat.dk
 
             options={}
 
@@ -824,7 +984,7 @@ class Postprocess:
         res = (u_mat[i][j] + 1./2.*(sim.k_vec[i]*sim.k_vec[j] -
                delta*np.ones(lat.dims_k,dtype = lat.prec_real))*
                (u_mat[0][0]+u_mat[1][1]+u_mat[2][2]) +
-               01./2.*(sim.k_vec[i]*sim.k_vec[j] +
+               1./2.*(sim.k_vec[i]*sim.k_vec[j] +
                delta*np.ones(lat.dims_k,dtype = lat.prec_real))*
                (sim.kx**2*u_mat[0][0] + sim.ky**2*u_mat[1][1] +
                 sim.kz**2*u_mat[2][2] +
@@ -871,7 +1031,7 @@ class Postprocess:
                      [Uk12,Uk22,Uk23],
                      [Uk13,Uk23,Uk33]]
 
-            "Note that i,j = 0,1,2:"
+            "Note that i,j = 0,1,2 (tensor indices 1,2,3):"
             sim.Uk11TT = self.tensorTT_ij(lat, sim, u_mat,0,0)
             sim.Uk12TT = self.tensorTT_ij(lat, sim, u_mat,0,1)
             sim.Uk13TT = self.tensorTT_ij(lat, sim, u_mat,0,2)
@@ -924,7 +1084,7 @@ class Postprocess:
         for which i>=j are calculated.
         The results are written to datafile."""
 
-        import postprocess.calc_gw_spect as gws
+        import postprocess.calc_spect as gws
 
         "Calculate the traceless-tranverse part of tensors:"
         self.tensor_TT(lat, sim, uQ)
@@ -938,7 +1098,7 @@ class Postprocess:
         
         gws.calc_spect_pi_h(sim.PiUk11TT.real,
                             sim.PiUk11TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,
@@ -948,7 +1108,7 @@ class Postprocess:
 
         gws.calc_spect_pi_h(sim.PiUk12TT.real,
                             sim.PiUk12TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,
@@ -958,7 +1118,7 @@ class Postprocess:
 
         gws.calc_spect_pi_h(sim.PiUk13TT.real,
                             sim.PiUk13TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,
@@ -968,7 +1128,7 @@ class Postprocess:
 
         gws.calc_spect_pi_h(sim.PiUk22TT.real,
                             sim.PiUk22TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,
@@ -978,7 +1138,7 @@ class Postprocess:
 
         gws.calc_spect_pi_h(sim.PiUk23TT.real,
                             sim.PiUk23TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,
@@ -988,7 +1148,7 @@ class Postprocess:
 
         gws.calc_spect_pi_h(sim.PiUk33TT.real,
                             sim.PiUk33TT.imag,
-                            sim.k_abs,
+                            sim.k_abs_gw,
                             sim.W_gw,
                             spect_k,
                             lat.dk,

@@ -37,7 +37,6 @@ Files included:
 
   - Python files:
     - calc_spect.pyx
-    - calc_gw_spect.pyx
     - f_init.pyx
     - field_init.py
     - lattice.py
@@ -273,6 +272,10 @@ N.B. These functions have been tested but not thoroughly. If you notice that
 the output is clearly wrong please submit this to the issues page at github
 and/or create a functioning fork.
 
+N.B.2 Currently PyCOOL uses effective momenta when calculating
+the number spectra and this can't be turned off without modifying
+lattice.py file.
+
 ------------------------------------------------------
 
 6 Curvature perturbation \zeta
@@ -320,21 +323,28 @@ Gravitational waves are solved if self.gwsQ == True in the model file.
 Current output of the program is the gravitational wave spectrum (gw_spectrum)
 and the fractional energy density of the gravitational waves (omega_gw).
 
-Note that this method has not been tested thoroughly. Especially the
-used projector operators should be verified. (These are in postprocess.py
-and calc_gw_spect.pyx files.)
+N.B. Note that this method has not been tested thoroughly. Especially the
+used projector operators should be verified. (These are in
+postprocess/procedures.py and calc_spect.pyx files.)
 
 ------------------------------------------------------
 
 8 Different dicretizations
 
-PyCOOL has two different dicretizations implemented: the one presented in
-DEFROST and the one used in HLattice. The latter of these is a more general one
-that uses a spatially fourth order accurate stencil and is also more suitable
-for a multi-GPU implementation.
+PyCOOL has three different dicretizations implemented: the one presented in
+DEFROST, the one implemented in Latticeeasy and the one used in HLattice.
+The last two of these use an identical CUDA implementation and are also more
+suitable for a multi-GPU implementation.
 
 The used stencil can be currently chosen with the self.discQ parameter in
-the model file by setting it equal to 'defrost' or 'hlattice'.
+the model file by setting it equal to 'defrost', 'latticeeasy' or 'hlattice'.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+N.B. Note that currently the 'hlattice' discretization leads to higher errors
+than the 'Defrost' stencil. Haven't figured what's causing this
+(could be anisotropic errors?). In simulations this also causes very clear
+artifacts in the fields. Therefore it is recommended to use 'Defrost' stencil.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ------------------------------------------------------
 

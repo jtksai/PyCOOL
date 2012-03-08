@@ -163,6 +163,7 @@ def kernel_H3_new_gpu_code(lat, field_i, V, write_code=False):
                         type_name_c = lat.prec_string,
                         f_coeff_l_c = V.f_coeff_l,
                         d_coeff_l_c = V.d_coeff_l,
+                        method_c = lat.discQ,
                         field_i_c = field_i,
                         fields_c = lat.fields,
                         block_x_c = lat.block_x,
@@ -290,11 +291,18 @@ def kernel_k2_gpu_code(lat, V, write_code=False):
 
     kernel_name = 'kernel_k2'
 
+    print 'Compiling kernel: ' + kernel_name
+
     f = codecs.open('cuda_templates/'+kernel_name+'.cu','r',encoding='utf-8')
     evo_code = f.read()
     f.close()
 
     tpl = Template(evo_code)
+
+    if lat.discQ == 'hlattice' and lat.radius == 4:
+        radius = 4
+    else:
+        radius = 2
 
     pi = np.pi
     w = 2*pi/lat.n
@@ -314,10 +322,13 @@ def kernel_k2_gpu_code(lat, V, write_code=False):
                                                digits=17,
                                                type = 'e'))
 
-    dk2_s = '{number:.{digits}}'.format(number=lat.dx**-2.,
+    dk_s = '{number:.{digits}}'.format(number=lat.dx**-1.,
                                         digits=17,
                                         type = 'e')
 
+    dk2_s = '{number:.{digits}}'.format(number=lat.dx**-2.,
+                                        digits=17,
+                                        type = 'e')
 
     f_code = tpl.render(real_name_c = lat.prec_string,
                         complex_name_c = lat.complex_string,
@@ -330,7 +341,9 @@ def kernel_k2_gpu_code(lat, V, write_code=False):
                         ct_1 = c_s[1],
                         ct_2 = c_s[2],
                         ct_3 = c_s[3],
-                        dk2 = dk2_s)
+                        dk = dk_s,
+                        dk2 = dk2_s,
+                        radius_c = radius)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -404,6 +417,88 @@ def kernel_rho_pres_gpu_code(lat, field_i, V, write_code=False):
                         DIM_X_c = lat.dimx,
                         DIM_Y_c = lat.dimy,
                         DIM_Z_c = lat.dimz,
+                        other_i_c = other_fields,
+                        eq_sign_c = eq_sign,
+                        field_rho_c = lat.field_rho,
+                        Vi_c = V_i_term,
+                        V_c = V_term,
+                        inter_c = inter,
+                        V_int_c = V_inter)
+
+    if write_code==True :
+        g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
+                        encoding='utf-8')
+        g.write(f_code)
+        g.close()
+
+    return SourceModule(f_code.encode( "utf-8" ),
+                        options=['-maxrregcount='+lat.reglimit])
+
+def kernel_rho_pres_new_gpu_code(lat, field_i, V, write_code=False):
+    """
+    Read kernel template from a file and compile a sourcemodule.
+    Different values are read from Lattice lat."""
+
+    fields = lat.fields
+
+    i = field_i - 1
+
+    "Write the lists of other fields:"
+    other_fields = (list(set(range(1,fields+1))-set([field_i])))
+
+    if field_i == 1:
+        eq_sign = '='
+    else:
+        eq_sign = '+='
+
+    V_term = ''
+    V_i_term = ''
+
+    if V.V_i_rp[i] != None:
+        V_term += V.V_i_rp[i]
+        V_i_term += V.V_i_rp[i]
+        if field_i == fields:
+            V_term += '+(' + V.V_int_rp + ')'
+    else:
+        V_i_term += '0.0'
+        if field_i == fields:
+            V_term += V.V_int_rp
+        else:
+            V_term += '0.0'
+
+    if V.V_int_rp not in ['','0.0'] and field_i == fields:
+        inter = True
+    else:
+        inter = False
+
+    V_inter = V.V_int_rp
+
+    kernel_name = 'kernel_rho_pres_new_' + 'field' + str(field_i)
+
+    print 'Compiling kernel: ' + kernel_name
+
+    f = codecs.open('cuda_templates/rho_pres_new.cu','r',encoding='utf-8')
+    evo_code = f.read()
+    f.close()
+
+    tpl = Template(evo_code)
+
+    f_code = tpl.render(kernel_name_c = kernel_name,
+                        type_name_c = lat.prec_string,
+                        g_coeff_l_c = V.g_coeff_l,
+                        d_coeff_l_c = V.d_coeff_l,
+                        method_c = lat.discQ,
+                        field_i_c = field_i,
+                        fields_c = lat.fields,
+                        block_x_c = lat.block_x,
+                        block_y_c = lat.block_y,
+                        grid_x_c = lat.grid_x,
+                        grid_y_c = lat.grid_y,
+                        stride_c = lat.stride,
+                        DIM_X_c = lat.dimx,
+                        DIM_Y_c = lat.dimy,
+                        DIM_Z_c = lat.dimz,
+                        radius_c = lat.radius,
                         other_i_c = other_fields,
                         eq_sign_c = eq_sign,
                         field_rho_c = lat.field_rho,
@@ -541,6 +636,173 @@ def kernel_spat_corr_gpu_code(lat, write_code=False):
 # Class definitions
 ###############################################################################
 
+class H2_Kernel:
+    "Used to evolve the field variables"
+    def __init__(self, lat, write_code=False):
+        self.mod = kernel_H2_gpu_code(lat, write_code)
+        self.evo1 = self.mod.get_function('kernelH2_1')
+        self.evo2 = self.mod.get_function('kernelH2_2')
+        self.gw_evo = self.mod.get_function('kernelU2')
+        self.hc_add = self.mod.get_global("h_coeff")
+
+    "Constant memory management:"
+    def update_h(self, x, stream):
+        cuda.memcpy_htod_async(self.hc_add[0],x, stream=None)
+    def read_h(self,x):
+        cuda.memcpy_dtoh(x,self.hc_add[0])
+
+class H3_Kernel:
+    "Used to evolve the canonical momentums of the fields"
+    def __init__(self, lat, field_i, V, write_code=False):
+        if lat.discQ == 'defrost':
+            self.mod = kernel_H3_gpu_code(lat, field_i, V, write_code)
+            self.evo = self.mod.get_function('kernel_H3_' + 'field' + str(field_i))
+            self.cc_add = self.mod.get_global("c_coeff")
+            self.cd_add = self.mod.get_global("c1_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.fc_add = self.mod.get_global("f_coeff")
+        elif lat.discQ == 'latticeeasy':
+            self.mod = kernel_H3_new_gpu_code(lat, field_i, V, write_code)
+            self.evo = (self.mod.get_function('kernel_H3_new_'
+                                              + 'field' + str(field_i)))
+            self.cc_add = self.mod.get_global("c2_coeff")
+            self.cd_add = self.mod.get_global("c1_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.fc_add = self.mod.get_global("f_coeff")
+        elif lat.discQ == 'hlattice':
+            self.mod = kernel_H3_new_gpu_code(lat, field_i, V, write_code)
+            self.evo = (self.mod.get_function('kernel_H3_new_'
+                                              + 'field' + str(field_i)))
+            self.cc_add = self.mod.get_global("c2_coeff")
+            self.cd_add = self.mod.get_global("c1_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.fc_add = self.mod.get_global("f_coeff")
+
+    "Constant memory management:"
+    def update_c(self,x):
+        cuda.memcpy_htod(self.cc_add[0],x)
+    def read_c(self,x):
+        cuda.memcpy_dtoh(x,self.cc_add[0])
+
+    def update_c1(self,x):
+        cuda.memcpy_htod(self.cd_add[0],x)
+    def read_c1(self,x):
+        cuda.memcpy_dtoh(x,self.cd_add[0])
+
+    def update_d(self,x):
+        cuda.memcpy_htod(self.dc_add[0],x)
+    def read_d(self,x):
+        cuda.memcpy_dtoh(x,self.dc_add[0])
+
+    def update_f(self, x , stream):
+        cuda.memcpy_htod_async(self.fc_add[0], x, stream=None)
+    def read_f(self,x):
+        cuda.memcpy_dtoh(x,self.fc_add[0])
+
+class gws_Kernel:
+    "Used to evolve the canonical momemtums of tensor perturbations"
+    def __init__(self, lat, tensor_ij, V, write_code=False):
+        if lat.discQ == 'defrost':
+            self.mod = kernel_gws_gpu_code(lat, tensor_ij, V, write_code)
+            self.evo = self.mod.get_function('kernelU3_' + str(tensor_ij))
+            self.cc_add = self.mod.get_global("c_coeff")
+            self.gwc_add = self.mod.get_global("gw_coeff")
+        elif lat.discQ == 'hlattice':
+            self.mod = kernel_gws_new_gpu_code(lat, tensor_ij, V, write_code)
+            self.evo = self.mod.get_function('kernelU3_' + str(tensor_ij))
+            self.cc_add = self.mod.get_global("c2_coeff")
+            self.gwc_add = self.mod.get_global("gw_coeff")
+
+    "Constant memory management:"
+    def update_c(self,x):
+        cuda.memcpy_htod(self.cc_add[0],x)
+    def read_c(self,x):
+        cuda.memcpy_dtoh(x,self.cc_add[0])
+
+    def update_gw(self, x , stream):
+        cuda.memcpy_htod_async(self.gwc_add[0], x, stream=None)
+    def read_gw(self,x):
+        cuda.memcpy_dtoh(x,self.gwc_add[0])
+
+
+class lin_evo_Kernel:
+    "Used to evolve the canonical momentums of the fields"
+    def __init__(self, lat, V, sim, write_code=False):
+        if sim.lin_evo:
+            self.mod = kernel_lin_evo_gpu_code(lat, V, sim, write_code)
+            self.evo = self.mod.get_function('linear_evo')
+        self.mod2 = kernel_k2_gpu_code(lat, V, write_code)
+        self.k2_calc = self.mod2.get_function('gpu_k2')
+        self.k_vec_calc = self.mod2.get_function('gpu_k_vec')
+        self.k2_bins_calc = self.mod2.get_function('gpu_k2_to_bin')
+        self.lin_field_evo = self.mod2.get_function('gpu_evolve_lin_fields')
+
+class rp_Kernel:
+    "Used to calculate the energy and pressure densities of the fields"
+    def __init__(self, lat, field_i, V, write_code=False):
+        if lat.discQ == 'defrost':
+            self.mod = kernel_rho_pres_gpu_code(lat, field_i, V, write_code)
+            self.calc = self.mod.get_function('kernel_rho_pres_' +
+                                          'field' + str(field_i))
+            self.cc_add = self.mod.get_global("c_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.gc_add = self.mod.get_global("g_coeff")
+
+        elif lat.discQ == 'latticeeasy':
+            self.mod = kernel_rho_pres_new_gpu_code(lat, field_i, V, write_code)
+            self.calc = self.mod.get_function('kernel_rho_pres_new_' +
+                                          'field' + str(field_i))
+            self.cc_add = self.mod.get_global("c1_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.gc_add = self.mod.get_global("g_coeff")
+
+        elif lat.discQ == 'hlattice':
+            self.mod = kernel_rho_pres_new_gpu_code(lat, field_i, V, write_code)
+            self.calc = self.mod.get_function('kernel_rho_pres_new_' +
+                                          'field' + str(field_i))
+            self.cc_add = self.mod.get_global("c1_coeff")
+            self.dc_add = self.mod.get_global("d_coeff")
+            self.gc_add = self.mod.get_global("g_coeff")
+
+    "Constant memory management:"
+
+    def update_c(self,x):
+        cuda.memcpy_htod(self.cc_add[0],x)
+    def read_c(self,x):
+        cuda.memcpy_dtoh(x,self.cc_add[0])
+
+    def update_d(self,x):
+        cuda.memcpy_htod(self.dc_add[0],x)
+    def read_d(self,x):
+        cuda.memcpy_dtoh(x,self.dc_add[0])
+
+    def update_g(self, x, stream=None):
+        cuda.memcpy_htod_async(self.gc_add[0], x, stream)
+    def read_g(self,x):
+        cuda.memcpy_dtoh(x,self.gc_add[0])
+
+
+class corr_Kernel:
+    "Used to calculate spatial correlation of variables"
+    def __init__(self, lat, write_code=False):
+        self.mod = kernel_spat_corr_gpu_code(lat, write_code)
+        self.calc = self.mod.get_function('kernel_spat_corr')
+        self.cc_add = self.mod.get_global("c_coeff")
+        self.cor_c_add = self.mod.get_global("cor_coeff")
+
+    "Constant memory management:"
+
+    def update_c(self,x):
+        cuda.memcpy_htod(self.cc_add[0],x)
+    def read_c(self,x):
+        cuda.memcpy_dtoh(x,self.cc_add[0])
+
+    def update_corr(self,x):
+        cuda.memcpy_htod(self.cor_c_add[0],x)
+    def read_cor(self,x):
+        cuda.memcpy_dtoh(x,self.cor_c_add[0])
+
+
 
 class Simulation:
     """Simulation class carries information on
@@ -632,7 +894,8 @@ class Simulation:
         self.ln_a_list = []
         self.r_list = []
 
-        if self.lin_evo or lat.k2_effQ:
+        #if self.lin_evo or lat.k2_effQ:
+        if self.lin_evo:
             "Array of k^2 values corresponding to discrete Laplacian:"
             self.k2_field_gpu = gpuarray.to_gpu(np.zeros(lat.dims_k,
                                                          dtype = lat.prec_real))
@@ -765,7 +1028,6 @@ class Simulation:
 
         "Tensor perturbations arrays u_ij and pi_{u_ij}:"
         if lat.gws:
-            import postprocess.calc_gw_spect as gws
 
             "Tensor indices:"
             self.tensor_ij_ind = [11,12,22,13,23,33]
@@ -782,32 +1044,16 @@ class Simulation:
             self.piu23_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
             self.piu33_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
 
-            "k arrays used when extracting the TT part of tensors:"
 
+        if lat.gws or lat.discQ == 'hlattice':
+            """k arrays used when extracting the TT part of tensors
+               and when calculating different spectra:"""
             self.kx = np.zeros(lat.dims_k, dtype = lat.prec_real)
             self.ky = np.zeros(lat.dims_k, dtype = lat.prec_real)
             self.kz = np.zeros(lat.dims_k, dtype = lat.prec_real)
-            self.k_abs = np.zeros(lat.dims_k, dtype = lat.prec_real)
+            self.k_abs_gw = np.zeros(lat.dims_k, dtype = lat.prec_real)
 
-            print '\nCalculating momentum vectors k_x, k_y and k_z\n'
-
-            "Not sure if gws.calc_k_eff is correct?"
-            #gws.calc_k_eff(self.kx, self.ky, self.kz, self.k_abs, lat.dx)
-
-            gws.calc_k(self.kx, self.ky, self.kz, self.k_abs, lat.dk)
-
-            "This are used when calculating gw spectra:"
-            self.k_max_gw = self.k_abs.max()/lat.dk
-
-            self.k_vec = [self.kx, self.ky, self.kz]
-
-            self.k_bins_gw = np.int32(np.floor(self.k_max_gw)) + 1
-
-            self.gw_spect_k = np.zeros(self.k_bins_gw, dtype = lat.prec_real)
-
-            "Count array when binning spectra:"
-            self.W_gw = np.zeros(self.k_bins_gw, dtype = np.int32)
-
+        self.k_abs = np.zeros(lat.dims_k, dtype = lat.prec_real)
 
         "These are used for storing constant memory arrays:"
         self.d_array = cuda.pagelocked_empty(V.d_coeff_l,
@@ -1031,12 +1277,12 @@ class Simulation:
 
                     f.put_quadvar1('field'+str(i)+'_f', "meshxy",
                                    np.asarray(field.f_gpu.get(), order="F"),
-                                   field.f_gpu.get().shape,
+                                   field.f_gpu.shape,
                                    centering=silo.DB_NODECENT,
                                    optlist=options)
                     f.put_quadvar1('field'+str(i)+'_pi', "meshxy",
                                    np.asarray(field.pi_gpu.get(), order="F"),
-                                   field.f_gpu.get().shape,
+                                   field.pi_gpu.shape,
                                    centering=silo.DB_NODECENT,
                                    optlist=options)
                 
@@ -1044,7 +1290,7 @@ class Simulation:
                         f.put_quadvar1('field'+str(i)+'_rho', "meshxy",
                                        np.asarray(field.rho_gpu.get(),
                                                   order="F"),
-                                       field.f_gpu.get().shape,
+                                       field.rho_gpu.shape,
                                        centering=silo.DB_NODECENT,
                                        optlist=options)
 
@@ -1052,12 +1298,12 @@ class Simulation:
 
                 f.put_quadvar1('rho', "meshxy",
                                np.asarray(c1*self.rho_gpu.get(), order="F"),
-                               self.rho_gpu.get().shape,
+                               self.rho_gpu.shape,
                                centering=silo.DB_NODECENT,
                                optlist=options)
                 f.put_quadvar1('pres', "meshxy",
                                np.asarray(c1*self.pres_gpu.get(), order="F"),
-                               self.pres_gpu.get().shape,
+                               self.pres_gpu.shape,
                                centering=silo.DB_NODECENT,
                                optlist=options)
 
@@ -1464,12 +1710,11 @@ class Simulation:
         #    field.sample_field(lat, a, init_m)
 
         "Recreate the fields:"
-        self.fields = [field(lat, V, fields0[i], pis0[i], i+1,
+        self.fields = [field(model, lat, V, fields0[i], pis0[i], i+1,
                              self.m2_eff[i], a, lat.init_mode,
                              lat.hom_mode)
                        for i in xrange(lat.fields)]
-
-
+                 
         "Reset variables used in linearized evo:"
         if self.lin_evo:
             cuda.memcpy_htod(self.a_gpu.gpudata, np.array(a,lat.prec_real))
@@ -1689,22 +1934,22 @@ class field:
         self.w_k = 0
 
         "Number and energy spectra:"
-        self.n_k = np.zeros(lat.ns, dtype = np.float64)
-        self.rho_k = np.zeros(lat.ns, dtype = np.float64)
-        self.k2_rho_k = np.zeros(lat.ns, dtype = np.float64)
+        self.n_k = np.zeros(lat.spect_l, dtype = np.float64)
+        self.rho_k = np.zeros(lat.spect_l, dtype = np.float64)
+        self.k2_rho_k = np.zeros(lat.spect_l, dtype = np.float64)
 
         "Field spectra:"
-        self.S = np.zeros(lat.ns, dtype = np.float64)
-        self.k2_S = np.zeros(lat.ns, dtype = np.float64)
-        #self.Fpk_sq = np.zeros(lat.ns, dtype = np.float64)
+        self.S = np.zeros(lat.spect_l, dtype = np.float64)
+        self.k2_S = np.zeros(lat.spect_l, dtype = np.float64)
+        #self.Fpk_sq = np.zeros(lat.spect_l, dtype = np.float64)
 
         "Number of points in the bin:"
-        self.W = np.zeros(lat.ns, dtype = np.int32)
-        self.W_df = np.zeros(lat.ns, dtype = np.float64)
+        self.W = np.zeros(lat.spect_l, dtype = np.int32)
+        self.W_df = np.zeros(lat.spect_l, dtype = np.float64)
         
         "List of distinct k values used in the spectrums:"
-        self.k_vals = np.arange(0,lat.ns)*lat.dk
-        #np.linspace(0, lat.ns*lat.dk, num = lat.ns)
+        self.k_vals = np.arange(0,lat.spect_l)*lat.dk
+        #np.linspace(0, lat.spect_l*lat.dk, num = lat.spect_l)
 
         "List used when calculating distributions of the energy densities:"
         self.rho_cdf = []
@@ -1795,147 +2040,6 @@ class field:
         cuda.memcpy_htod(self.f_lin_1_gpu.gpudata, self.ones)
         cuda.memcpy_htod(self.pi_lin_1_gpu.gpudata, self.ones)
 
-class H2_Kernel:
-    "Used to evolve the field variables"
-    def __init__(self, lat, write_code=False):
-        self.mod = kernel_H2_gpu_code(lat, write_code)
-        self.evo1 = self.mod.get_function('kernelH2_1')
-        self.evo2 = self.mod.get_function('kernelH2_2')
-        self.gw_evo = self.mod.get_function('kernelU2')
-        self.hc_add = self.mod.get_global("h_coeff")
-
-    "Constant memory management:"
-    def update_h(self, x, stream):
-        cuda.memcpy_htod_async(self.hc_add[0],x, stream=None)
-    def read_h(self,x):
-        cuda.memcpy_dtoh(x,self.hc_add[0])
-
-class H3_Kernel:
-    "Used to evolve the canonical momentums of the fields"
-    def __init__(self, lat, field_i, V, write_code=False):
-        if lat.discQ == 'defrost':
-            self.mod = kernel_H3_gpu_code(lat, field_i, V, write_code)
-            self.evo = self.mod.get_function('kernel_H3_' + 'field' + str(field_i))
-            self.cc_add = self.mod.get_global("c_coeff")
-            self.cd_add = self.mod.get_global("c1_coeff")
-            self.dc_add = self.mod.get_global("d_coeff")
-            self.fc_add = self.mod.get_global("f_coeff")
-        elif lat.discQ == 'hlattice':
-            self.mod = kernel_H3_new_gpu_code(lat, field_i, V, write_code)
-            self.evo = (self.mod.get_function('kernel_H3_new_'
-                                              + 'field' + str(field_i)))
-            self.cc_add = self.mod.get_global("c2_coeff")
-            self.cd_add = self.mod.get_global("c1_coeff")
-            self.dc_add = self.mod.get_global("d_coeff")
-            self.fc_add = self.mod.get_global("f_coeff")
-
-    "Constant memory management:"
-    def update_c(self,x):
-        cuda.memcpy_htod(self.cc_add[0],x)
-    def read_c(self,x):
-        cuda.memcpy_dtoh(x,self.cc_add[0])
-
-    def update_c1(self,x):
-        cuda.memcpy_htod(self.cd_add[0],x)
-    def read_c1(self,x):
-        cuda.memcpy_dtoh(x,self.cd_add[0])
-
-    def update_d(self,x):
-        cuda.memcpy_htod(self.dc_add[0],x)
-    def read_d(self,x):
-        cuda.memcpy_dtoh(x,self.dc_add[0])
-
-    def update_f(self, x , stream):
-        cuda.memcpy_htod_async(self.fc_add[0], x, stream=None)
-    def read_f(self,x):
-        cuda.memcpy_dtoh(x,self.fc_add[0])
-
-class gws_Kernel:
-    "Used to evolve the canonical momemtums of tensor perturbations"
-    def __init__(self, lat, tensor_ij, V, write_code=False):
-        if lat.discQ == 'defrost':
-            self.mod = kernel_gws_gpu_code(lat, tensor_ij, V, write_code)
-            self.evo = self.mod.get_function('kernelU3_' + str(tensor_ij))
-            self.cc_add = self.mod.get_global("c_coeff")
-            self.gwc_add = self.mod.get_global("gw_coeff")
-        elif lat.discQ == 'hlattice':
-            self.mod = kernel_gws_new_gpu_code(lat, tensor_ij, V, write_code)
-            self.evo = self.mod.get_function('kernelU3_' + str(tensor_ij))
-            self.cc_add = self.mod.get_global("c2_coeff")
-            self.gwc_add = self.mod.get_global("gw_coeff")
-
-    "Constant memory management:"
-    def update_c(self,x):
-        cuda.memcpy_htod(self.cc_add[0],x)
-    def read_c(self,x):
-        cuda.memcpy_dtoh(x,self.cc_add[0])
-
-    def update_gw(self, x , stream):
-        cuda.memcpy_htod_async(self.gwc_add[0], x, stream=None)
-    def read_gw(self,x):
-        cuda.memcpy_dtoh(x,self.gwc_add[0])
-
-
-class lin_evo_Kernel:
-    "Used to evolve the canonical momentums of the fields"
-    def __init__(self, lat, V, sim, write_code=False):
-        if sim.lin_evo:
-            self.mod = kernel_lin_evo_gpu_code(lat, V, sim, write_code)
-            self.evo = self.mod.get_function('linear_evo')
-        self.mod2 = kernel_k2_gpu_code(lat, V, write_code)
-        self.k2_calc = self.mod2.get_function('gpu_k2')
-        self.k2_bins_calc = self.mod2.get_function('gpu_k2_to_bin')
-        self.lin_field_evo = self.mod2.get_function('gpu_evolve_lin_fields')
-
-class rp_Kernel:
-    "Used to calculate the energy and pressure densities of the fields"
-    def __init__(self, lat, field_i, V, write_code=False):
-        self.mod = kernel_rho_pres_gpu_code(lat, field_i, V, write_code)
-        self.calc = self.mod.get_function('kernel_rho_pres_' +
-                                          'field' + str(field_i))
-        self.cc_add = self.mod.get_global("c_coeff")
-        self.dc_add = self.mod.get_global("d_coeff")
-        self.gc_add = self.mod.get_global("g_coeff")
-
-    "Constant memory management:"
-
-    def update_c(self,x):
-        cuda.memcpy_htod(self.cc_add[0],x)
-    def read_c(self,x):
-        cuda.memcpy_dtoh(x,self.cc_add[0])
-
-    def update_d(self,x):
-        cuda.memcpy_htod(self.dc_add[0],x)
-    def read_d(self,x):
-        cuda.memcpy_dtoh(x,self.dc_add[0])
-
-    def update_g(self, x, stream=None):
-        cuda.memcpy_htod_async(self.gc_add[0], x, stream)
-    def read_g(self,x):
-        cuda.memcpy_dtoh(x,self.gc_add[0])
-
-
-class corr_Kernel:
-    "Used to calculate spatial correlation of variables"
-    def __init__(self, lat, write_code=False):
-        self.mod = kernel_spat_corr_gpu_code(lat, write_code)
-        self.calc = self.mod.get_function('kernel_spat_corr')
-        self.cc_add = self.mod.get_global("c_coeff")
-        self.cor_c_add = self.mod.get_global("cor_coeff")
-
-    "Constant memory management:"
-
-    def update_c(self,x):
-        cuda.memcpy_htod(self.cc_add[0],x)
-    def read_c(self,x):
-        cuda.memcpy_dtoh(x,self.cc_add[0])
-
-    def update_corr(self,x):
-        cuda.memcpy_htod(self.cor_c_add[0],x)
-    def read_cor(self,x):
-        cuda.memcpy_dtoh(x,self.cor_c_add[0])
-
-
 class Evolution:
     """Create the necessary functions for the simulation,
        energy density and pressure calculations."""
@@ -1952,7 +2056,8 @@ class Evolution:
             self.H3_kernels.append([gws_Kernel(lat, ij, V, write_code)
                                     for ij in sim.tensor_ij_ind])
 
-        if sim.lin_evo or lat.k2_effQ:
+        #if sim.lin_evo or lat.k2_effQ:
+        if sim.lin_evo:
             self.lin_evo_kernel = lin_evo_Kernel(lat, V, sim, write_code)
 
         self.rp_kernels = [rp_Kernel(lat, i+1, V, write_code)
@@ -1964,7 +2069,7 @@ class Evolution:
         for kernel in self.H3_kernels[0]:
             kernel.update_c(lat.cc)
             kernel.update_d(V.D_coeffs_np)
-            if lat.discQ == 'hlattice':
+            if lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
                 kernel.update_c1(lat.cd)
                 
 
@@ -1973,7 +2078,10 @@ class Evolution:
                 kernel.update_c(lat.cc)
 
         for kernel in self.rp_kernels:
-            kernel.update_c(lat.cf)
+            if lat.discQ == 'defrost':
+                kernel.update_c(lat.cf)
+            if lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
+                kernel.update_c(lat.cd)
             kernel.update_d(V.D_coeffs_np)
 
         self.sc_kernel.update_c(lat.cf)
@@ -2037,7 +2145,7 @@ class Evolution:
             self.cuda_param_H3 = dict(block=lat.cuda_block_2,
                                       grid=lat.cuda_grid,
                                       stream = sim.stream)
-        elif lat.discQ == 'hlattice':
+        elif lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
             self.cuda_param_H3 = dict(block=lat.cuda_block_1,
                                       grid=lat.cuda_grid,
                                       stream = sim.stream)
@@ -2098,8 +2206,9 @@ class Evolution:
                                          stream = sim.stream)
 
 
+        """
         if sim.lin_evo == False and lat.k2_effQ:
-            """Calculate k2_eff-terms used in the spectra:"""
+            "Calculate k2_eff-terms used in the spectra:"
             self.lin_evo_kernel.k2_calc(sim.k2_field_gpu, **self.cuda_param_H2)
 
             sim.k2_field = (sim.k2_field_gpu.get()).astype(np.float64)
@@ -2111,6 +2220,8 @@ class Evolution:
             sim.k_max = np.sqrt(sim.k2_field.max())/lat.dk
 
             sim.k_bins = np.int32(np.floor(sim.k_max)) + 1
+
+            lat.spect_l = sim.k_bins
 
             #sim.k2_bins_pos = sim.k2_bins[np.where(sim.k2_bins>=0.)]
 
@@ -2133,6 +2244,7 @@ class Evolution:
         
                 "List of distinct k values used in the spectrums:"
                 field.k_vals = np.arange(0,sim.k_bins)*lat.dk
+        """
             
         "Cuda function arguments used in rho and pressure kernels:"
         self.rp_arg = [sim.rho_gpu, sim.pres_gpu, sim.rhosum_gpu,
@@ -2149,7 +2261,13 @@ class Evolution:
             for f in sim.fields:
                 self.rp_arg.append(f.rho_gpu)
 
-        self.cuda_param_rp = dict(block=lat.cuda_block_2, grid=lat.cuda_grid)
+        if lat.discQ == 'defrost':
+            self.cuda_param_rp = dict(block=lat.cuda_block_2,
+                                      grid=lat.cuda_grid)
+
+        elif lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
+            self.cuda_param_rp = dict(block=lat.cuda_block_1,
+                                      grid=lat.cuda_grid)
 
         "Cuda function arguments used in spatial correlation kernel:"
         self.sc_arg = [sim.rho_gpu, sim.sum_nabla_rho_gpu,
@@ -2355,7 +2473,7 @@ class Evolution:
             self.cuda_param_H3 = dict(block=lat.cuda_block_2,
                                       grid=lat.cuda_grid,
                                       stream = sim.stream)
-        elif lat.discQ == 'hlattice':
+        elif lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
             self.cuda_param_H3 = dict(block=lat.cuda_block_1,
                                       grid=lat.cuda_grid,
                                       stream = sim.stream)

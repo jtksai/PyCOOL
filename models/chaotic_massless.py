@@ -79,7 +79,7 @@ class Model:
         self.L = 10./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 64
+        self.n = 2*64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -89,7 +89,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 10./self.m
+        self.t_fin = 2000./self.m
         self.t_fin_hom = 256./self.m
 
         "If True write to file:"
@@ -109,7 +109,7 @@ class Model:
         self.evoQ = True#False#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
+        self.gwsQ = False#True#
 
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
@@ -133,18 +133,27 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = False#True#
+        self.fieldsQ = True#False#
+
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'hlattice'#'latticeeasy'#'defrost'#
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = True#False#
-
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
            the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'#
+        #self.spect_m = 'defrost'#'latticeeasy'#
+
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
+
+        "If distQ = True calculate empirical CDF and CDF at the end:"
+        self.distQ = True#False#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#

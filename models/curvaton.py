@@ -108,6 +108,9 @@ class Model:
         "Set True to solve non-linearized evolution:"
         self.evoQ = True#False#
 
+        """Whether to solve tensor perturbations:"""
+        self.gwsQ = True#False#
+
         """Whether to do non-Gaussianity calculations
            (this disables post-processing):"""
         self.zetaQ = False#True#
@@ -115,12 +118,12 @@ class Model:
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
+        "If True write to file:"
+        self.saveQ = True#False#
+
         "How frequently to save data:"
         self.flush_freq = 256#*120
         self.flush_freq_hom = 128*8
-
-        "If True write to file:"
-        self.saveQ = True#False#
 
         "If True make a superfolder that has all the different simulations:"
         self.superfolderQ = False#True#

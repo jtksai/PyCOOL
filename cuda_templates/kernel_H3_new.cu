@@ -108,7 +108,6 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     // Down data
     // In a multi-gpu implementation these values could be loaded from a different device
-//#pragma unroll {{ radiusp1 }}
     for (j = 0; j < {{ radius_c }}; j++)
     {
         down[j] = field{{ field_i_c }}[in_idx];
@@ -178,7 +177,6 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // In a multi-gpu implementation these values could be loaded from a different device
     in_idx = out_idx + {{ stride_c }};
 
-//#pragma unroll {{ radius_c }}
     for (j = 0 ; j < {{ radius_c }} ; j++)
     {
         up[j] = field{{ field_i_c }}[in_idx];
@@ -200,7 +198,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // f_coeff[1] = dt*a(t)/(dx^2)
     // c2_coeff's = laplacian discretization coefficients
 
-    {% if radius_c == 4%}
+    {% if method_c == "hlattice" and radius_c == 4%}
         D2f = f_coeff[1]*(c2_coeff[4]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp4 }}] +
                                        s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm4 }}] +
                                        s_data[threadIdx.y + {{ radiusp4 }}][threadIdx.x + {{ radius_c }}] +
@@ -223,6 +221,14 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                                        up[{{ radiusm4 }}] + down[{{ radiusm4 }}]) +
                           c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
 
+    {% elif method_c == "latticeeasy"%}
+        D2f = f_coeff[1]*(c2_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] +
+                                       s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm1 }}] +
+                                       s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] +
+                                       s_data[threadIdx.y + {{ radiusm1 }}][threadIdx.x + {{ radius_c }}] +
+                                       up[0] + down[0]) +
+                          c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
+
     {% endif %}
 
     /////////////////////////////////
@@ -237,23 +243,25 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
         pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        //pi{{ field_i_c }}_m[out_idx] = D2f;
 
     //  Note that -4*V_interaction included for the last field
         sumi = f{{ field_i_c }}*D2f {{ V_c }};
 
-
     {% if gw_c %}
         //Tensor perturbation source terms:
+
+        {% if method_c == "hlattice" and radius_c == 4%}
         Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
-                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]) - 
+                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp2 }}] -
                            s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm2 }})]);
         Dyf = c1_coeff[0]*(s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] -
-                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]) - 
+                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radiusp2 }}][threadIdx.x + {{ radius_c }}] -
                            s_data[threadIdx.y + ({{ radiusm2 }})][threadIdx.x + {{ radius_c }}]);
-        Dzf = c1_coeff[0]*(up[{{ radiusm4 }}] - down[{{ radiusm4 }}]) - 
-              c1_coeff[1]*(up[{{ radiusm3 }}] - down[{{ radiusm3 }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]) + 
+              c1_coeff[1]*(up[1] - down[1]);
 
     //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
 
@@ -263,30 +271,53 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
         piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
         piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+
+        {% elif method_c == "latticeeasy"%}
+
+        Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
+                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]);
+        Dyf = c1_coeff[0]*(s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] -
+                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]);
+
+    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+
+        piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
+        piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
+        piu22_m[out_idx] += f_coeff[3]*(Dyf*Dyf);
+        piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
+        piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
+        piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+        {% endif %}
+
     {% endif %}
+
 
     {% set foo = DIM_Z_c-radius_c %}
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // advance in z direction until z={{ foo }}
     // {{ foo }} <= z < {{ DIM_Z_c }} calculated seperately
 
-//#pragma unroll {{ foo }}
     for(i=1; i<({{ foo }}); i++)
     {
         __syncthreads();
 
         // Advance the slice (move the thread-front)
-//#pragma unroll {{ radiusm1 }}
+    {% if radiusm1 > 0%}
         for (int j = {{ radiusm1 }} ; j > 0 ; j--)
             down[j] = down[j - 1];
+    {% endif %}
+
 
         down[0] = s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}];
         s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}] = up[0];
         f{{ field_i_c }} = up[0]; 	// current field value
 
-//#pragma unroll {{ radiusm1 }}
-        for (int j = 0 ; j < {{ radiusm1 }}; j++)
+    {% if radiusm1 > 0%}
+        for (j = 0 ; j < {{ radiusm1 }}; j++)
             up[j] = up[j + 1];
+    {% endif %}
+
         up[{{ radiusm1 }}] = field{{ field_i_c }}[in_idx];
 
         in_idx += {{ stride_c }};
@@ -360,7 +391,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // f_coeff[1] = dt*a(t)/(dx^2)
     // c2_coeff's = laplacian discretization coefficients
 
-    {% if radius_c == 4%}
+    {% if method_c == "hlattice" and radius_c == 4%}
         D2f = f_coeff[1]*(c2_coeff[4]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp4 }}] +
                                        s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm4 }}] +
                                        s_data[threadIdx.y + {{ radiusp4 }}][threadIdx.x + {{ radius_c }}] +
@@ -382,6 +413,13 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                                        s_data[threadIdx.y + {{ radiusm1 }}][threadIdx.x + {{ radius_c }}] +
                                        up[{{ radiusm4 }}] + down[{{ radiusm4 }}]) +
                           c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
+    {% elif method_c == "latticeeasy"%}
+        D2f = f_coeff[1]*(c2_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] +
+                                       s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm1 }}] +
+                                       s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] +
+                                       s_data[threadIdx.y + {{ radiusm1 }}][threadIdx.x + {{ radius_c }}] +
+                                       up[0] + down[0]) +
+                          c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
     {% endif %}
 
 	/////////////////////////////////
@@ -397,6 +435,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
 
           pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        // pi{{ field_i_c }}_m[out_idx] = D2f;
 
         //  Note that -4*V_interaction included for the last field
           sumi += f{{ field_i_c }}*D2f {{ V_c }};
@@ -404,16 +443,18 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     {% if gw_c %}
         //Tensor perturbation source terms:
+
+        {% if method_c == "hlattice" and radius_c == 4%}
         Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
-                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]) - 
+                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp2 }}] -
                            s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm2 }})]);
         Dyf = c1_coeff[0]*(s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] -
-                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]) - 
+                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radiusp2 }}][threadIdx.x + {{ radius_c }}] -
                            s_data[threadIdx.y + ({{ radiusm2 }})][threadIdx.x + {{ radius_c }}]);
-        Dzf = c1_coeff[0]*(up[{{ radiusm4 }}] - down[{{ radiusm4 }}]) - 
-              c1_coeff[1]*(up[{{ radiusm3 }}] - down[{{ radiusm3 }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]) + 
+              c1_coeff[1]*(up[1] - down[1]);
 
     //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
 
@@ -423,6 +464,25 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
         piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
         piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+
+        {% elif method_c == "latticeeasy"%}
+
+        Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
+                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]);
+        Dyf = c1_coeff[0]*(s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] -
+                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]);
+
+    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+
+        piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
+        piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
+        piu22_m[out_idx] += f_coeff[3]*(Dyf*Dyf);
+        piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
+        piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
+        piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+        {% endif %}
+
     {% endif %}
 
     }
@@ -434,24 +494,24 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     in_idx = {{ DIM_X_c }}*(blockIdx.y*blockDim.y + threadIdx.y) + blockIdx.x*blockDim.x + threadIdx.x;
 
-#pragma unroll {{ radius_c }}
     for(i={{ foo }}; i<({{ DIM_Z_c }}); i++)
     {
         __syncthreads();
 
         // Advance the slice (move the thread-front)
-#pragma unroll {{ radiusm1 }}
+    {% if radiusm1 > 0%}
         for (j = {{ radiusm1 }} ; j > 0 ; j--)
             down[j] = down[j - 1];
+    {% endif %}
 
         down[0] = s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}];
         s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}] = up[0];
         f{{ field_i_c }} = up[0]; 	// current field value
 
-
-#pragma unroll {{ radius_c }}
+{% if radiusm1 > 0%}
         for (j = 0 ; j < {{ radiusm1 }}; j++)
             up[j] = up[j + 1];
+{% endif %}
         up[{{ radiusm1 }}] = field{{ field_i_c }}[in_idx];
 
         in_idx  += {{ stride_c }};
@@ -527,7 +587,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // f_coeff[1] = dt*a(t)/(dx^2)
     // c2_coeff's = laplacian discretization coefficients
 
-    {% if radius_c == 4%}
+    {% if method_c == "hlattice" and radius_c == 4%}
+
         D2f = f_coeff[1]*(c2_coeff[4]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp4 }}] +
                                        s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm4 }}] +
                                        s_data[threadIdx.y + {{ radiusp4 }}][threadIdx.x + {{ radius_c }}] +
@@ -549,6 +610,14 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                                        s_data[threadIdx.y + {{ radiusm1 }}][threadIdx.x + {{ radius_c }}] +
                                        up[{{ radiusm4 }}] + down[{{ radiusm4 }}]) +
                           c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
+    {% elif method_c == "latticeeasy"%}
+
+        D2f = f_coeff[1]*(c2_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] +
+                                       s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusm1 }}] +
+                                       s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] +
+                                       s_data[threadIdx.y + {{ radiusm1 }}][threadIdx.x + {{ radius_c }}] +
+                                       up[0] + down[0]) +
+                          c2_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radius_c }}]));
     {% endif %}
 
 	/////////////////////////////////
@@ -563,7 +632,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
 
-          pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+         pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
 
         //  Note that -4*V_interaction included for the last field
           sumi += f{{ field_i_c }}*D2f {{ V_c }};
@@ -571,6 +640,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
     {% if gw_c %}
         //Tensor perturbation source terms:
+
+        {% if method_c == "hlattice" and radius_c == 4%}
         Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
                            s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp2 }}] -
@@ -579,8 +650,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                            s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]) + 
               c1_coeff[1]*(s_data[threadIdx.y + {{ radiusp2 }}][threadIdx.x + {{ radius_c }}] -
                            s_data[threadIdx.y + ({{ radiusm2 }})][threadIdx.x + {{ radius_c }}]);
-        Dzf = c1_coeff[0]*(up[{{ radiusm4 }}] - down[{{ radiusm4 }}]) + 
-              c1_coeff[1]*(up[{{ radiusm3 }}] - down[{{ radiusm3 }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]) + 
+              c1_coeff[1]*(up[1] - down[1]);
 
     //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
 
@@ -590,6 +661,25 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
         piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
         piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+
+        {% elif method_c == "latticeeasy"%}
+
+        Dxf = c1_coeff[0]*(s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + {{ radiusp1 }}] -
+                           s_data[threadIdx.y + {{ radius_c }}][threadIdx.x + ({{ radiusm1 }})]);
+        Dyf = c1_coeff[0]*(s_data[threadIdx.y + {{ radiusp1 }}][threadIdx.x + {{ radius_c }}] -
+                           s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
+        Dzf = c1_coeff[0]*(up[0] - down[0]);
+
+    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+
+        piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
+        piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
+        piu22_m[out_idx] += f_coeff[3]*(Dyf*Dyf);
+        piu13_m[out_idx] += f_coeff[3]*(Dxf*Dzf);
+        piu23_m[out_idx] += f_coeff[3]*(Dyf*Dzf);
+        piu33_m[out_idx] += f_coeff[3]*(Dzf*Dzf);
+        {% endif %}
+
     {% endif %}
 
     }

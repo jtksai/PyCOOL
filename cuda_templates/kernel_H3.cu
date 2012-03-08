@@ -149,8 +149,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
-        //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-        pi{{ field_i_c }}_m[in_idx] = D2f;
+        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+        // pi{{ field_i_c }}_m[in_idx] = D2f;
 
     //  Note that -4*V_interaction included for the last field
         sumi = f{{ field_i_c }}*D2f {{ V_c }};
@@ -244,8 +244,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
 
-          //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-        pi{{ field_i_c }}_m[in_idx] = D2f;
+          pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+          //pi{{ field_i_c }}_m[in_idx] = D2f;
 
         //  Note that -4*V_interaction included for the last field
           sumi += f{{ field_i_c }}*D2f {{ V_c }};
@@ -328,8 +328,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
-        //pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
-        pi{{ field_i_c }}_m[in_idx] = D2f;
+        pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
+      //  pi{{ field_i_c }}_m[in_idx] = D2f;
 
     //  Note that -4*V_interaction included for the last field
         sumi += f{{ field_i_c }}*D2f {{ V_c }};

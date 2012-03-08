@@ -116,7 +116,7 @@ class Lattice:
 
         self.m2_eff = True if model.m2_effQ and model.spectQ else False
 
-        self.k2_effQ = True if model.spect_m == 'k2_eff' else False
+        self.k2_effQ = True #if model.spect_m == 'k2_eff' else False
 
         self.discQ = model.discQ
 
@@ -126,7 +126,9 @@ class Lattice:
 
         self.spect = model.spectQ
 
-        self.spect_method = model.spect_m
+        self.spect_m = 'k2_eff'#model.spect_m
+
+        self.spect_m_gw = model.spect_gw_m
 
         self.dist = model.distQ
 
@@ -189,6 +191,9 @@ class Lattice:
         "Highest wavenumber on 3D grid:"
         self.ns = int(np.sqrt(3)*(model.n/2) + 1)
 
+        "Length of spectra (This will be changed if 'k_eff' is True):"
+        self.spect_l = self.ns
+
         """
         ########################################
         #Different CUDA grid and block choises:
@@ -246,7 +251,48 @@ class Lattice:
         Taken from "Michael Patra, Mikko Karttunen: Stencils with isotropic
         discretization error for differential operators"."""
 
-        if precision == "float" and self.discQ == 'defrost':
+        if precision == "float" and self.discQ == 'latticeeasy':
+            self.prec_real = np.float32
+            self.prec_complex = np.complex64
+            self.prec_string = "float"
+            self.complex_string = "float2"
+            self.f_term='f'
+            "Set the upper limit for the number of registers per thread:"
+            if model.max_reg == None:
+                self.reglimit = '24'
+            else:
+                self.reglimit = str(model.max_reg)
+            "Laplacian and nabla squared discretization coefficients:"
+            self.cc = np.array([-6., 1., 0., 0.],
+                               dtype=np.float32)
+            self.cc_a = self.cc
+            self.cd = np.array([0.5,0.0], dtype=np.float32)
+            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+                               dtype=np.float32)
+            self.radius = 1
+
+        elif precision == "double" and self.discQ == 'latticeeasy':
+            self.prec_real = np.float64
+            self.prec_complex = np.complex128
+            self.prec_string = "double"
+            self.complex_string = "double2"
+            self.f_term=''
+            "Set the upper limit for the number of registers per thread:"
+            if model.max_reg == None:
+                self.reglimit = '32'
+            else:
+                self.reglimit = str(model.max_reg)
+            "Laplacian and nabla squared discretization coefficients:"
+            self.cc = np.array([-6., 1.],
+                               dtype=np.float64)
+            self.cc_a = self.cc
+            self.cd = np.array([0.5,0.0], dtype=np.float64)
+            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+                               dtype=np.float64)
+            self.radius = 1
+
+
+        elif precision == "float" and self.discQ == 'defrost':
             self.prec_real = np.float32
             self.prec_complex = np.complex64
             self.prec_string = "float"
@@ -261,7 +307,7 @@ class Lattice:
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float32)
             self.cc_a = self.cc
-            self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
+            self.cd = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float32)
 
         elif precision == "double" and self.discQ == 'defrost':
@@ -278,6 +324,8 @@ class Lattice:
             "Laplacian and nabla squared discretization coefficients:"
             self.cc = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float64)
+            #self.cc = np.array([-6., 1., 0.0, 0.0],
+            #                   dtype=np.float64)
             self.cc_a = self.cc
             self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float64)
@@ -296,7 +344,9 @@ class Lattice:
             "Laplacian and partial derivatice discretization coefficients:"
             self.cc = np.array([-390./144.,16./144.,64./144.,-16./144.,1./144.],
                                dtype=np.float64)
-            self.cd = np.array([8./12.,-1./12.],
+            #self.cc = np.array([-6.,1.,0.,0.,0.],
+            #                   dtype=np.float64)
+            self.cd = np.array([8./12.,1./12.],
                                dtype=np.float64)
             self.cf = np.array([-64./15., 7./15., 1.0/10.0, 1.0/30.0],
                                dtype=np.float64)
@@ -316,7 +366,7 @@ class Lattice:
             "Laplacian and partial derivatice discretization coefficients:"
             self.cc = np.array([-390./144.,16./144.,64./144.,-1./144.,1./144.],
                                dtype=np.float32)
-            self.cd = np.array([8./12.,-1./12.],
+            self.cd = np.array([8./12.,1./12.],
                                dtype=np.float32)
             self.radius = 4
 

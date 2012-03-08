@@ -20,12 +20,12 @@ import sys
 #)
 
 
-ext2 = Extension("postprocess.calc_spect", ["postprocess/calc_spect.pyx"])
+ext1 = Extension("postprocess.calc_spect", ["postprocess/calc_spect.pyx"])
 
-ext3 = Extension("postprocess.calc_gw_spect", ["postprocess/calc_gw_spect.pyx"])
+#ext3 = Extension("postprocess.calc_gw_spect", ["postprocess/calc_gw_spect.pyx"])
 
-#setup(ext_modules=[ext, ext2, ext3],
+#setup(ext_modules=[ext, ext1, ext3],
 #    cmdclass = {'build_ext': build_ext})
 
-setup(ext_modules=[ext2, ext3],
+setup(ext_modules=[ext1],
     cmdclass = {'build_ext': build_ext})

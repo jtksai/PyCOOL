@@ -105,7 +105,7 @@ class Model:
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
+        self.gwsQ = False#True#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 1e-12
@@ -113,12 +113,12 @@ class Model:
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
-        "How frequently to save data:"
-        self.flush_freq = 256
-        self.flush_freq_hom = 128*8
-
         "If True write to file:"
         self.saveQ = True#False#
+
+        "How frequently to save data:"
+        self.flush_freq = 128
+        self.flush_freq_hom = 128*8
 
         "If True make a superfolder that has all the different simulations:"
         self.superfolderQ = False#True#
@@ -132,18 +132,28 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = False#True#
+        self.fieldsQ = True#False#
 
-        "If spectQ = True calculate spectrums at the end:"
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'defrost'#'hlattice'#'latticeeasy'#
+
+        "If spectQ = True calculate spectrums:"
         self.spectQ = True#False#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = True#False#
-
+        #This has been depracated:"
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
            the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'#
+        #self.spect_m = 'defrost'#'latticeeasy'#
+
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
+
+        "If distQ = True calculate empirical CDF and CDF at the end:"
+        self.distQ = True#False#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#
@@ -161,7 +171,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False#True#
+        self.testQ = True#False#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""

@@ -504,6 +504,10 @@ def create_info_file(model, lat, V, sim, time):
 
     text += 'Is debugging mode on? : ' + str(lat.test) + '\n'
 
+    text += 'Discretization method : ' + str(lat.discQ) + '\n'
+
+    text += 'Are gravitational waves solved? : ' + str(lat.gws) + '\n\n'
+
     text += 'Lattice size (n): ' + str(lat.n) + '\n'
 
     text += 'Lattice side length: ' + str(lat.m*lat.L) + '/m \n'

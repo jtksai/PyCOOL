@@ -40,7 +40,7 @@ sim = si.Simulation(model, lat, V, model.a_in, model.fields0, model.pis0,
 
 evo = si.Evolution(lat, V, sim)
 
-postp = pp.Postprocess(lat, V)
+postp = pp.Postprocess(lat, V, sim)
 
 if model.zetaQ == False:
     "Create a new folder for the data:"
@@ -62,9 +62,6 @@ show_GPU_mem()
 "Time simulation:"
 start = cuda.Event()
 end = cuda.Event()
-
-#start_lin = cuda.Event()
-#end_lin = cuda.Event()
 
 """
 ################
@@ -106,7 +103,6 @@ if model.evoQ:
 if sim.i0 != 0:
     "Print simulation time info:"
     sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
-
 
 "Curvature perturbation (zeta) calculations:"
 
