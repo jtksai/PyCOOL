@@ -69,7 +69,7 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(1024*self.m)
+        self.dtau = 1./(2*1024*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
@@ -117,7 +117,7 @@ class Model:
         self.saveQ = True#False#
 
         "How frequently to save data:"
-        self.flush_freq = 128
+        self.flush_freq = 2*128
         self.flush_freq_hom = 128*8
 
         "If True make a superfolder that has all the different simulations:"
@@ -132,7 +132,7 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = True#False#
+        self.fieldsQ = False#True#
 
         "The used discretization. Options 'defrost' or 'hlattice'."
         self.discQ = 'defrost'#'hlattice'#'latticeeasy'#
@@ -171,7 +171,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = True#False#
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""

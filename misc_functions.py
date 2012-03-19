@@ -281,6 +281,8 @@ def rho_init(V, fields0, pis0):
     "Initial value of the potential function:"
     V0 = V.subs(rep_list)
 
+    #print 'V0', float(V0)
+
     rho0 += V0
 
     return float(rho0)
@@ -323,7 +325,7 @@ def mass_eff(V, field_list, fields0, H0, deSitter=False):
     for mass in m2eff:
         if mass <0:
             import sys
-            print 'Mass squared negative i.e. initial H too large.'
+            print 'Mass squared negative!'
             sys.exit()
 
 
@@ -654,7 +656,10 @@ def write_csv(lat, data_path, mode = 'non-lin', source = 'silo'):
 
             csv_file = open(f_name,'w')
             writer = csv.writer(csv_file)
-            writer.writerow(['t_val','k_val','k_val2'] + curves)
+            if lat.gws:
+                writer.writerow(['t_val','k_val','k_val2'] + curves)
+            else:
+                writer.writerow(['t_val','k_val'] + curves)
             writer.writerow(t_val)
             if lat.spect and mode == 'non-lin':
                 writer.writerow(k_val)

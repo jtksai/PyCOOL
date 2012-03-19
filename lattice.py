@@ -580,7 +580,7 @@ class Potential:
         """Constant memory array f_coeff coefficients.
            Note that the third term is related to the discrete derivative
            of the scalar fields when using 'defrost' discretization
-           and the fourth is used 'hlattice' dicretization is used."""
+           and the fourth is used when 'hlattice' dicretization is used."""
         return np.array([a, a*dt*lat.dx**(-2.),
                          0.5*lat.mpl**2*a**2.*dt*lat.dx**(-2.),
                          2*lat.mpl**2*a**2.*dt*lat.dx**(-2.)],

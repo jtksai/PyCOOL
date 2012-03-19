@@ -1974,7 +1974,16 @@ class field:
         self.skew_list = []
         self.kurt_list = []
 
+    def adjust_mean(self):
+        "Subtract the homogeneous value from the f_gpu and pi_gpu arrays"
+        tmp = self.f_gpu.get()
+        tmp2 = self.pi_gpu.get()
 
+        tmp[0,0,0] = 0.+0.*1j
+        tmp2[0,0,0] = 0.+0.*1j
+
+        cuda.memcpy_htod(self.f_gpu.gpudata, tmp)
+        cuda.memcpy_htod(self.pi_gpu.gpudata, tmp2)
 
     def perturb_field(self):
         "Subtract the homogeneous value from the f_gpu and pi_gpu arrays"
@@ -2535,6 +2544,10 @@ class Evolution:
 
         for field in sim.fields:
             field.fft()
+
+        if perturb:
+            for field in sim.fields:
+                field.adjust_mean()
 
         "Update memory ids:"
         self.update(lat, sim)

@@ -28,6 +28,7 @@ class Model:
         "Scalar field masses:"
         self.m2f1 = 2*self.m**2.
         self.m2f2 = 2*self.m**2.
+        self.m2_fields = [self.m2f1, self.m2f2]
 
         "Coupling strength:"
         self.K = -0.1
@@ -90,7 +91,7 @@ class Model:
         self.L = 16./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 128
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 0.1*(self.t_in*self.m)**(2./3.)
@@ -106,15 +107,19 @@ class Model:
 
         "Set True to solve non-linearized evolution:"
         self.evoQ = True
+
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
-        self.zetaQ = True#False#
+        self.zetaQ = False#True#
+
+        """Whether to solve tensor perturbations:"""
+        self.gwsQ = True#False#
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
 
         "How frequently to save data:"
-        self.flush_freq = 4*1024
+        self.flush_freq = 256
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
@@ -134,19 +139,29 @@ class Model:
            the Silo files:"""
         self.fieldsQ = True
 
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'defrost'#'latticeeasy'#'hlattice'#
+
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
-        self.distQ = True
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
 
+        #This has been depracated:"
         """The used method to calculate spectrums. Options 'latticeeasy' and
            'defrost'. Defrost uses aliasing polynomial to smooth
            the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'
+        #self.spect_m = 'defrost'#'latticeeasy'
+
+        "If distQ = True calculate empirical CDF and CDF at the end:"
+        self.distQ = False#True#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
-        self.statsQ = True
+        self.statsQ = True#False#
 
         """If field_r = True calculate also energy densities of fields
            without interaction terms:"""
@@ -154,18 +169,18 @@ class Model:
 
         """If field_lpQ = True calculate correlation lengths of
            the energy densities of the fields without interaction terms:"""
-        self.field_lpQ = False
+        self.field_lpQ = False#True#
 
         "If deSitter = True include -9H^2/(4m^2) terms in \omega_k^2 term:"
-        self.deSitterQ = True
+        self.deSitterQ = True#False#
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
-        self.m2_effQ = False
+        self.m2_effQ = True#False#
 
         "If csvQ = True writes curves from Silo files to csv files:"
         self.csvQ = True#False#

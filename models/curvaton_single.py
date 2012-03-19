@@ -86,10 +86,10 @@ class Model:
         #self.dtau_hom = 1./(1000*self.m)
 
         "Lattice side length:"
-        self.L = 5./12./self.m
+        self.L = 4*5./12./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 64
+        self.n = 4*64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -99,7 +99,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0.
-        self.t_fin = 100./self.m
+        self.t_fin = 5000./self.m
         self.t_fin_hom = 50./self.m
 
         "Use linearized evolution if True:"
@@ -125,7 +125,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to calculate rho and error:"
-        self.flush_freq = 4*64#256#*120
+        self.flush_freq = 2*64#256#*120
         self.flush_freq_hom = 128*8
 
         "If True write to file:"

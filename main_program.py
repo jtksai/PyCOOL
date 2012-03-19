@@ -20,9 +20,10 @@ from lattice import *
 #from models.chaotic_massless import *
 #from models.curvaton import *
 #from models.curvaton_si import *
-from models.curvaton_single import *
+#from models.curvaton_single import *
 #from models.oscillon import *
 #from models.q_ball import *
+from models.AD import *
 
 "Create a model:"
 model = Model()
@@ -51,7 +52,7 @@ their homogeneous values:"""
 sim.adjust_fields(lat)
 
 """Canonical momentum p calculated with homogeneous fields.
-   Field fluctuations will lead to a small perturbation into p.
+   Field fluctuations will lead to a small perturbation in p.
    Adjust_p compensates this."""
 evo.calc_rho_pres(lat, V, sim, print_Q = False, print_w=False, flush=False)
 sim.adjust_p(lat)

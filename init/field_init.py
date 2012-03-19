@@ -274,6 +274,9 @@ def f_init(lat, field0, field_i, m2_eff, flag_method='defrost_cpu', homogQ=True)
     elif flag_method=='defrost_cpu2':
         f = sample_defrost_cpu2(lat, gpu_conv,-0.25, m2_eff) + c*field0
         print "\nField " + repr(field_i)+ " init on cpu done"
+    elif flag_method=='uniform':
+        f = np.random.random(lat.dims_xyz)*field0 + c*field0
+        print "\nField " + repr(field_i)+ " init on cpu done"
 
     return np.array(f, dtype = lat.prec_real)
 
@@ -316,6 +319,9 @@ def fp_init(lat, pi0, field_i, m2_eff, a_in,
     elif flag_method=='defrost_cpu2':
         fp = sample_defrost_cpu2(lat, gpu_conv, 0.25, m2_eff) + c*pi0
         print "Field " + repr(field_i)+ " time derivative init on cpu done"
+    elif flag_method=='uniform':
+        fp = np.random.random(lat.dims_xyz)*pi0 + c*pi0
+        print "\nField " + repr(field_i)+ " init on cpu done"
     else:
         import sys
         sys.exit(("Init method ill defined!"))

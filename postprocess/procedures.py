@@ -608,6 +608,8 @@ class Postprocess:
             if lat.unit == 'm':
                 c = 1./lat.m
                 c1 = lat.m
+                #c = 1.
+                #c1 = 1.0
             else:
                 c = 1.
                 c1 = 1.0

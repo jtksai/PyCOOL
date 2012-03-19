@@ -26,6 +26,7 @@ class Model:
         "Scalar field masses:"
         self.m2f1 = self.m**2.
         self.m2f2 = 0.0
+        self.m2_fields = [self.m2f1,self.m2f2]
 
         "Coupling strengths:"
         self.g2 = 1e-4
@@ -106,10 +107,10 @@ class Model:
         self.homogenQ = False#True#
 
         "Set True to solve non-linearized evolution:"
-        self.evoQ = True#False#
+        self.evoQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = True#False#
+        self.gwsQ = False#True#
 
         """Whether to do non-Gaussianity calculations
            (this disables post-processing):"""
@@ -139,16 +140,28 @@ class Model:
            the Silo files:"""
         self.fieldsQ = True#False#
 
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'defrost'#'latticeeasy'#'hlattice'#
+
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#
 
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
+
+        #This has been depracated:"
+        """The used method to calculate the other spectra.
+           Options are 'latticeeasy', 'defrost'(Defrost uses
+           an aliasing polynomial to smoothen the spectra) or
+           'k2_eff' which uses k^2_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        #self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
+
         "If distQ = True calculate empirical CDF and CDF at the end:"
         self.distQ = False#True#
-
-        """The used method to calculate spectrums. Options 'latticeeasy' and
-           'defrost'. Defrost uses aliasing polynomial to smooth
-           the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#
