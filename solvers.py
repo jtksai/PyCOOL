@@ -214,12 +214,12 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
             write_csv(lat, path)
 
 def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
-                     endQ = 'time', print_Q = True, print_w = False,
-                     flush = True):
+                     endQ = 'time', adaptive = False, print_Q = True,
+                     print_w = False, flush = True):
     """This will solve the non-linear evolution of the system with
        an integrator of a given order:"""
 
-    if endQ == 'time':
+    if endQ == 'time' and adaptive == False:
 
         if order == 2:
             "Solve the non-linear evolution:"
@@ -339,6 +339,140 @@ def solve_non_linear(lat, V, sim, evo, postp, model, path, order = 4,
                 sim.i0 += 1
                 "Change this for a higher-order integrator if needed:"
                 evo.evo_step_8(lat, V, sim, lat.dtau)
+
+            evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+        
+            if model.saveQ:
+                data_file = sim.flush(lat, path, save_evo = False)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.postQ:
+                postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
+    elif endQ == 'time' and adaptive:
+
+        if order == 2:
+            "Solve the non-linear evolution:"
+            while (sim.t<model.t_fin):
+                if (sim.i0%(sim.flush_freq)==0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                    if model.saveQ:
+                        data_file = sim.flush(lat, path)
+
+                    "Calculate spectrums and statistics:"
+                    if lat.postQ:
+                        postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
+
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_2(lat, V, sim, lat.dtau/sim.a)
+
+            evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+        
+            if model.saveQ:
+                data_file = sim.flush(lat, path, save_evo = False)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.postQ:
+                postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
+        elif order == 4:
+            "Solve the non-linear evolution:"
+            while (sim.t<model.t_fin):
+                if (sim.i0%(sim.flush_freq)==0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                    if model.saveQ:
+                        data_file = sim.flush(lat, path)
+
+                    "Calculate spectrums and statistics:"
+                    if lat.postQ:
+                        postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
+
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_4(lat, V, sim, lat.dtau/sim.a)
+
+            evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+        
+            if model.saveQ:
+                data_file = sim.flush(lat, path, save_evo = False)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.postQ:
+                postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
+        elif order == 6:
+            "Solve the non-linear evolution:"
+            while (sim.t<model.t_fin):
+                if (sim.i0%(sim.flush_freq)==0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                    if model.saveQ:
+                        data_file = sim.flush(lat, path)
+
+                    "Calculate spectrums and statistics:"
+                    if lat.postQ:
+                        postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
+
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_6(lat, V, sim, lat.dtau/sim.a)
+
+            evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+        
+            if model.saveQ:
+                data_file = sim.flush(lat, path, save_evo = False)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.postQ:
+                postp.process_fields(lat, V, sim, data_file)
+
+            "Calculate spectrums and statistics of final values:"
+            if lat.gws:
+                postp.process_tensors(lat, sim, data_file)
+
+        elif order == 8:
+            "Solve the non-linear evolution:"
+            while (sim.t<model.t_fin):
+                if (sim.i0%(sim.flush_freq)==0):
+                    evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
+                    if model.saveQ:
+                        data_file = sim.flush(lat, path)
+
+                    "Calculate spectrums and statistics:"
+                    if lat.postQ:
+                        postp.process_fields(lat, V, sim, data_file)
+
+                    "Calculate spectrums and statistics of final values:"
+                    if lat.gws:
+                        postp.process_tensors(lat, sim, data_file)
+
+                sim.i0 += 1
+                "Change this for a higher-order integrator if needed:"
+                evo.evo_step_8(lat, V, sim, lat.dtau/sim.a)
 
             evo.calc_rho_pres(lat, V, sim, print_Q, print_w, flush)
         

@@ -176,7 +176,8 @@ def V_calc_lin(V_string, n, field_list, field_i, power_list,
     except SympifyError:
         print "Could not parse expression."
 
-    tmp = ((m*diff(V, field_list[field_i-1], deriv_n)).expand()).evalf()
+    #tmp = ((m*diff(V, field_list[field_i-1], deriv_n)).expand()).evalf()
+    tmp = (m*diff(V, field_list[field_i-1], deriv_n)).expand()
 
     "Replace C_i's and D_i's with the appropiate numerical values:"
     r_V_back = {}
@@ -202,19 +203,23 @@ def V_calc_lin(V_string, n, field_list, field_i, power_list,
         f_repl.update({'f'+str(i+1):'f0'+str(i+1)+'[0]'})
 
     if deriv_n == 0:
-        tmp = (tmp.subs(r_V_back)).evalf()
+        #tmp = (tmp.subs(r_V_back)).evalf()
+        tmp = tmp.subs(r_V_back)
         tmp2 = format_to_cuda(str(tmp), power_list, C_list, D_list, n)
         res = replace_all(tmp2,f_repl)
     elif deriv_n == 1:
-        tmp = (tmp.subs(r_dV_back)).evalf()
+        #tmp = (tmp.subs(r_dV_back)).evalf()
+        tmp = tmp.subs(r_dV_back)
         tmp2 = format_to_cuda(str(tmp), power_list, C_list, D_list, n)
         res = replace_all(tmp2,f_repl)
     elif deriv_n == 2:
-        tmp = (tmp.subs(r_dV_back)).evalf()
+        #tmp = (tmp.subs(r_dV_back)).evalf()
+        tmp = tmp.subs(r_dV_back)
         tmp2 = format_to_cuda(str(tmp), power_list, C_list, D_list, n)
         res = replace_all(tmp2,f_repl)
 
     #print 'res', res
+    #print 'deriv_n', deriv_n, 'res', res
 
     return res
 
