@@ -32,6 +32,7 @@ class Model:
         self.m2f2 = 0.0
         #self.m2f1_old = (3.162293471517152e-09)**2#self.m**2
         self.m2f1_old = (1e-9)**2
+        self.m2_fields = [self.m2f1,self.m2f2]
 
         "Coupling strengths:"
         self.g2 = 1e-4
@@ -64,6 +65,9 @@ class Model:
 
         "Interaction terms of the fields:"
         self.V_int = ["0.5*C4*f1**2*f2**2"]
+
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  []
 
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
@@ -107,6 +111,10 @@ class Model:
         #self.t_fin = 10./m
         self.t_fin_hom = 60./self.m
 
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
+
         "Use linearized evolution if True:"
         self.lin_evo = False#True#
 
@@ -115,6 +123,9 @@ class Model:
 
         "Set True to solve non-linearized evolution:"
         self.evoQ = True#False#
+
+        """Whether to solve tensor perturbations:"""
+        self.gwsQ = False#True#
 
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
@@ -148,16 +159,28 @@ class Model:
            the Silo files:"""
         self.fieldsQ = True#False#
 
+        "The used discretization. Options 'defrost' or 'hlattice'."
+        self.discQ = 'defrost'#'latticeeasy'#'hlattice'#
+
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True#False#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        """The used method to calculate gravitaional spectrums.
+           Options 'std' which uses a continuum based wave numbers
+           and 'k_eff' which uses k^_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        self.spect_gw_m = 'std'#'k_eff'#
+
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
 
-        """The used method to calculate spectrums. Options 'latticeeasy' and
-           'defrost'. Defrost uses aliasing polynomial to smooth
-           the spectrums."""
-        self.spect_m = 'defrost'#'latticeeasy'
+        #This has been depracated:"
+        """The used method to calculate the other spectra.
+           Options are 'latticeeasy', 'defrost'(Defrost uses
+           an aliasing polynomial to smoothen the spectra) or
+           'k2_eff' which uses k^2_eff related to the discretized
+           Laplacian to calculate the spectra."""
+        #self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
         self.statsQ = True#False#

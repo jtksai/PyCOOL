@@ -90,6 +90,15 @@ def kernel_H3_gpu_code(lat, field_i, V, write_code=False):
             V_term += V.V_int_H3
             V_term = '-(' + V_term + ')'
 
+    if lat.tmpQ:
+        tmp_trms = ''
+        for j in xrange(len(V.tmp_terms)):
+            tmp_trms += 'tmp' + str(j + 1) + ' = ' + V.tmp_terms[j] + ';\n'
+        trms = len(V.tmp_terms)
+    else:
+        tmp_trms = ''
+        trms = 0
+
     f_code = tpl.render(kernel_name_c = kernel_name,
                         type_name_c = lat.prec_string,
                         f_coeff_l_c = V.f_coeff_l,
@@ -110,7 +119,10 @@ def kernel_H3_gpu_code(lat, field_i, V, write_code=False):
                         V_intQ = len(V.V_int_H3)>0,
                         V_int_c = V.V_int_H3,
                         V_c = V_term,
-                        gw_c = lat.gws)
+                        gw_c = lat.gws,
+                        tmp_c = lat.tmpQ,
+                        tmp_terms_c = tmp_trms,
+                        trms_c = trms)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -119,7 +131,10 @@ def kernel_H3_gpu_code(lat, field_i, V, write_code=False):
         g.close()
 
     return SourceModule(f_code.encode( "utf-8" ),
-                        options=['-maxrregcount=' + lat.reglimit])
+                        options=['-maxrregcount=' + lat.reglimit,
+                                 '-Xptxas','-dlcm=ca'],
+                        keep=True)
+
 
 def kernel_H3_new_gpu_code(lat, field_i, V, write_code=False):
     """
@@ -159,6 +174,15 @@ def kernel_H3_new_gpu_code(lat, field_i, V, write_code=False):
             V_term += V.V_int_H3
             V_term = '-(' + V_term + ')'
 
+    if lat.tmpQ:
+        tmp_trms = ''
+        for j in xrange(len(V.tmp_terms)):
+            tmp_trms += 'tmp' + str(j + 1) + ' = ' + V.tmp_terms[j] + ';\n'
+        trms = len(V.tmp_terms)
+    else:
+        tmp_trms = ''
+        trms = 0
+
     f_code = tpl.render(kernel_name_c = kernel_name,
                         type_name_c = lat.prec_string,
                         f_coeff_l_c = V.f_coeff_l,
@@ -181,7 +205,10 @@ def kernel_H3_new_gpu_code(lat, field_i, V, write_code=False):
                         V_intQ = len(V.V_int_H3)>0,
                         V_int_c = V.V_int_H3,
                         V_c = V_term,
-                        gw_c = lat.gws)
+                        gw_c = lat.gws,
+                        tmp_c = lat.tmpQ,
+                        tmp_terms_c = tmp_trms,
+                        trms_c = trms)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -190,7 +217,8 @@ def kernel_H3_new_gpu_code(lat, field_i, V, write_code=False):
         g.close()
 
     return SourceModule(f_code.encode( "utf-8" ),
-                        options=['-maxrregcount=' + lat.reglimit])
+                        options=['-maxrregcount=' + lat.reglimit,
+                                 '-Xptxas','-dlcm=cg'])
 
 def kernel_lin_evo_gpu_code(lat, V, sim, write_code=True):
     """
@@ -393,6 +421,18 @@ def kernel_rho_pres_gpu_code(lat, field_i, V, write_code=False):
 
     V_inter = V.V_int_rp
 
+    if lat.tmpQ and field_i == fields:
+        tmpQ = True
+        tmp_trms = ''
+        for j in xrange(len(V.tmp_terms)):
+            tmp_trms += 'tmp' + str(j + 1) + ' = ' + V.tmp_terms[j] + ';\n'
+        trms = len(V.tmp_terms)
+    else:
+        tmpQ = True
+        tmp_trms = ''
+        trms = 0
+
+
     kernel_name = 'kernel_rho_pres_' + 'field' + str(field_i)
 
     print 'Compiling kernel: ' + kernel_name
@@ -423,7 +463,10 @@ def kernel_rho_pres_gpu_code(lat, field_i, V, write_code=False):
                         Vi_c = V_i_term,
                         V_c = V_term,
                         inter_c = inter,
-                        V_int_c = V_inter)
+                        V_int_c = V_inter,
+                        tmp_c = tmpQ,
+                        tmp_terms_c = tmp_trms,
+                        trms_c = trms)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -473,6 +516,18 @@ def kernel_rho_pres_new_gpu_code(lat, field_i, V, write_code=False):
 
     V_inter = V.V_int_rp
 
+    if lat.tmpQ and field_i == fields:
+        tmpQ = True
+        tmp_trms = ''
+        for j in xrange(len(V.tmp_terms)):
+            tmp_trms += 'tmp' + str(j + 1) + ' = ' + V.tmp_terms[j] + ';\n'
+        trms = len(V.tmp_terms)
+    else:
+        tmpQ = False
+        tmp_trms = ''
+        trms = 0
+
+
     kernel_name = 'kernel_rho_pres_new_' + 'field' + str(field_i)
 
     print 'Compiling kernel: ' + kernel_name
@@ -505,7 +560,10 @@ def kernel_rho_pres_new_gpu_code(lat, field_i, V, write_code=False):
                         Vi_c = V_i_term,
                         V_c = V_term,
                         inter_c = inter,
-                        V_int_c = V_inter)
+                        V_int_c = V_inter,
+                        tmp_c = tmpQ,
+                        tmp_terms_c = tmp_trms,
+                        trms_c = trms)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -992,6 +1050,7 @@ class Simulation:
 
         "Various GPU-memory arrays:"
         self.rho_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
+        self.rho_host = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
         self.pres_gpu = gpuarray.zeros(lat.dims_xyz, dtype = lat.prec_real)
 
         self.rhosum_gpu = gpuarray.zeros(lat.dims_xy, dtype = lat.prec_real)
@@ -2074,10 +2133,14 @@ class Evolution:
 
         self.sc_kernel = corr_Kernel(lat, write_code)
 
+        self.H2_kernel.evo1.set_cache_config(cuda.func_cache.PREFER_L1)
+        self.H2_kernel.evo2.set_cache_config(cuda.func_cache.PREFER_L1)
+
         "Load the discretization coefficients to constant memory:"
         for kernel in self.H3_kernels[0]:
             kernel.update_c(lat.cc)
             kernel.update_d(V.D_coeffs_np)
+            kernel.evo.set_cache_config(cuda.func_cache.PREFER_L1)
             if lat.discQ == 'hlattice' or lat.discQ == 'latticeeasy':
                 kernel.update_c1(lat.cd)
                 
@@ -2085,6 +2148,7 @@ class Evolution:
         if lat.gws:
             for kernel in self.H3_kernels[1]:
                 kernel.update_c(lat.cc)
+                kernel.evo.set_cache_config(cuda.func_cache.PREFER_L1)
 
         for kernel in self.rp_kernels:
             if lat.discQ == 'defrost':
@@ -2287,15 +2351,15 @@ class Evolution:
 
     def calc_rho_pres(self, lat, V, sim, print_Q = True, print_w = False,
                       flush = True):
-        """Perform energy density and pressure calculations of the homogeneous
-        field variables:"""
+        """Perform energy density and pressure calculations:"""
         calc_rho_pres(lat, V, sim,
                       self.rp_kernels, self.cuda_param_rp, self.rp_arg,
                       self.sc_kernel, self.cuda_param_sc, self.sc_arg,
                       print_Q, print_w, flush)
 
     def calc_rho_pres_back(self, lat, V, sim, print_Q = True, flush = True):
-        "Perform energy density and pressure calculations:"
+        """Perform energy density and pressure calculations of the background
+           variables:"""
         calc_rho_pres_back(lat, V, sim, print_Q, flush)
 
     def calc_rho_pres_hom(self, lat, V, sim, print_Q = True, flush = True):

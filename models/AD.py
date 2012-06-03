@@ -36,8 +36,8 @@ class Model:
 
         "Initial values for the fields and the field time derivatives:"
 
-        self.f10 =  3*1e14/(2.4353431507105459e+18)
-        self.f20 = 3*1e14/(2.4353431507105459e+18)#0.
+        self.f10 =  3*1e15/(2.4353431507105459e+18)
+        self.f20 = 0.#3*1e14/(2.4353431507105459e+18)#0.
 
         self.df1_dt0 = 3*1e14/(2.4353431507105459e+18)*self.m
         self.df2_dt0 = 0.
@@ -53,19 +53,26 @@ class Model:
         self.V_list = ['C1*f1**2', 'C2*f2**2']
 
         "Interaction terms of the fields:"
-        #self.V_int = ["C1*(log(1+D1*(f1**2+f2**2)))+C2*(f1**2+f2**2)**3"]
-        self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))"+
-                       "+C4*(f1**2+f2**2)**5" +
-                       "+C5*(f1**6-f2**6)"+
-                       "+C6*(f1**2*f2**4-f2**2*f1**4)"
-                       )]
+        #self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))"+
+        #               "+C4*(f1**2+f2**2)**5" +
+        #               "+C5*(f1**6-f2**6)"+
+        #               "+C6*(f1**2*f2**4-f2**2*f1**4)"
+        #               )]
+        self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))")]
+
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  ['log(D1*(f1**2+f2**2))']
+        #self.tmp_var =  []
+
 
         """Numerical values for C1, C2, ... These will be multiplied by
-           a**3*dtau:"""
-        self.C_coeff = [self.m2f1, self.m2f2, self.K*self.m**2,
-                        1./(self.M**6),
-                        np.sqrt(40)*self.m**2*2.0/(6.0*self.M**3),
-                        np.sqrt(40)*self.m**2*30.0/(6.0*self.M**3)]
+        a**3*dtau:"""
+        #self.C_coeff = [self.m2f1, self.m2f2, self.K*self.m**2,
+        #                1./(self.M**6),
+        #                np.sqrt(40)*self.m**2*2.0/(6.0*self.M**3),
+        #                np.sqrt(40)*self.m**2*30.0/(6.0*self.M**3)]
+
+        self.C_coeff = [self.m2f1, self.m2f2, self.K*self.m**2]
 
         "Numerical values for bare coefficients D1, D2, ..."
         self.D_coeff = [1./self.M**2]
@@ -78,7 +85,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0./self.m
-        self.t_fin = 100./self.m
+        self.t_fin = 1000./self.m
         self.t_fin_hom = 10000./self.m
 
         "Initial values for homogeneous radiation and matter components:"
@@ -86,14 +93,17 @@ class Model:
         self.rho_m0 = 0.#3.*(self.m)**2
 
         "Time step:"
-        self.dtau = 0.001/self.m
+        self.dtau = 0.005/self.m
         #self.dtau = 1./(1000*m)
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(2000*self.m)
 
         "Lattice side length:"
-        self.L = 8./self.m
+        self.L = 80./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -105,19 +115,19 @@ class Model:
         self.a_limit = 2
 
         "Set if to use linearized evolution:"
-        self.lin_evo = True#False
+        self.lin_evo = False#True#
 
         "Solve homogeneous field evolution if True:"
         self.homogenQ = False
 
         "Set True to solve non-linearized evolution:"
-        self.evoQ = False#True#
+        self.evoQ = True#False#
         """Whether to do curvature perturbation (zeta) calculations
            (this disables post-processing). Also disables evoQ:"""
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = False#True#
+        self.gwsQ = True#False#
 
         "Number of different simulations to run with identical intial values:"
         self.sim_num = 1
@@ -161,7 +171,7 @@ class Model:
            the spectrums."""
         #self.spect_m = 'defrost'#'latticeeasy'
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""

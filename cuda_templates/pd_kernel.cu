@@ -71,6 +71,9 @@ __global__ void {{ kernel_name_c }}({% for i in range(1,fields_c+1) %}{{ type_na
     {{ type_name_c }} sum_p_deriv = 0.;
     {{ type_name_c }} sum_d2V = 0.;
 
+    {% if tmp_c %}
+   {% for i in range(1,trms_c+1) %} {{ type_name_c }} tmp{{i}};{% endfor %}
+    {% endif %}
 
     /////////////////////////////////////////
     // load the initial data into smem
@@ -128,6 +131,7 @@ __global__ void {{ kernel_name_c }}({% for i in range(1,fields_c+1) %}{{ type_na
                + (sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])
                + (sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])));
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
      sum_p_deriv = p_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} - p_coeff[1]*G - ({{ V_c }}) ;
 
@@ -201,6 +205,7 @@ __global__ void {{ kernel_name_c }}({% for i in range(1,fields_c+1) %}{{ type_na
                + (sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])
                + (sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])));
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
          sum_p_deriv += p_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} - p_coeff[1]*G - ({{ V_c }}) ;
 
@@ -265,6 +270,8 @@ __global__ void {{ kernel_name_c }}({% for i in range(1,fields_c+1) %}{{ type_na
                + (sup_data[threadIdx.y-1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y-1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])
                + (sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x-1] - smid_data[threadIdx.y][threadIdx.x])
                + (sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])*(sup_data[threadIdx.y+1][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x])));
+
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
      sum_p_deriv += p_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} - p_coeff[1]*G - ({{ V_c }}) ;
 

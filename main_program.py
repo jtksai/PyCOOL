@@ -22,9 +22,9 @@ from lattice import *
 #from models.curvaton_si import *
 #from models.curvaton_single import *
 #from models.oscillon import *
-#from models.q_ball import *
+from models.q_ball import *
 #from models.AD import *
-from models.AD2 import *
+#from models.AD2 import *
 
 "Create a model:"
 model = Model()
@@ -100,7 +100,7 @@ if model.evoQ:
 
     solv.run_non_linear(lat, V, sim, evo, postp, model, start, end,
                         data_path, order = 4, endQ = 'time', print_Q = True,
-                        print_w = False, adaptive = True)
+                        print_w = False, adaptive = model.adaptQ)
 
 if sim.i0 != 0:
     "Print simulation time info:"
@@ -123,7 +123,7 @@ if model.zetaQ:
 
         solv.run_non_linear(lat, V, sim, evo, postp, model, start, end,
                         data_path, order = 4, endQ = 'H', print_Q = True,
-                        print_w = False)
+                        print_w = False, adaptive = model.adaptQ)
 
         sim_time(sim.time_sim, sim.per_stp, sim.i0, data_path)
 
@@ -139,4 +139,5 @@ if model.zetaQ:
 Simulation finished
 ####################
 """
+
 print 'Done.'

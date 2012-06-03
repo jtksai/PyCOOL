@@ -110,6 +110,10 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
     {{ type_name_c }} sum_pres_f = 0.;
     {{ type_name_c }} V_i, V;
 
+    {% if tmp_c %}
+   {% for i in range(1,trms_c+1) %} {{ type_name_c }} tmp{{i}};{% endfor %}
+    {% endif %}
+
     /////////////////////////////////////////
     // load the initial data into shared mem
     // down data from the top of the lattice
@@ -240,6 +244,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
      G = Dxf*Dxf + Dyf*Dyf +Dzf*Dzf;
 
      // Calculate the necessary pressure and energy density terms:
+
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
      rho = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[1]*G  ;
      pres = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[2]*G ;
@@ -384,6 +390,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
          G = Dxf*Dxf + Dyf*Dyf +Dzf*Dzf;
 
          // Calculate the necessary pressure and energy density terms:
+
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
          rho = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[1]*G;
          pres = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[2]*G;
@@ -541,6 +549,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *rho_w, {{ type_name_c }} 
         G = Dxf*Dxf + Dyf*Dyf +Dzf*Dzf;
 
         // Calculate the necessary pressure and energy density terms:
+
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
         rho = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[1]*G;
         pres = g_coeff[0]*pi{{ field_i_c }}*pi{{ field_i_c }} + g_coeff[2]*G;

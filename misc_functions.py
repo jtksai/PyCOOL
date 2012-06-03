@@ -64,7 +64,7 @@ def new_poly(V_s, fields, n_coeffs):
 
 def V_calc(V_string, n, field_list, field_i, power_list,
            C_list, D_list, kernel_type, deriv_n=0,
-           multiplier=1.0):
+           multiplier=1.0, tmpQ = False, tmp_list = None):
     """Apply the necessary calculations (i.e. derivation and/or multiply
        with a constant) to the potential function V_string:"""
 
@@ -149,11 +149,16 @@ def V_calc(V_string, n, field_list, field_i, power_list,
     elif deriv_n == 2:
         tmp2 = format_to_cuda(tmp, power_list, C_list, D_list, n)
         res = replace_all(tmp2, r_cuda_d2V)
-        
-    return res
 
-#V_string, n, field_list, field_i, n_coeffs, coeffs,
-#               deriv_n=0, multiplier=1.0
+    if tmpQ:
+        tmp_rules = {}
+        for i in xrange(len(tmp_list)):
+            tmp_rules.update({tmp_list[i]:'tmp'+str(i+1)})
+        res2 = replace_all(res, tmp_rules)
+    else:
+        res2 = res
+    
+    return res2
 
 def V_calc_lin(V_string, n, field_list, field_i, power_list,
                C_list, D_list, C_vals, D_vals,

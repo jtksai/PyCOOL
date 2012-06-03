@@ -88,8 +88,8 @@ def reinit(lat, V, sim, evo, model, a_in, fields0, pis0):
 
 
 def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
-                   order = 4, endQ = 'time', print_Q = True, print_w = False,
-                   flush = True):
+                   order = 4, endQ = 'time', adaptive = False, print_Q = True,
+                   print_w = False, flush = True):
     """This function will solve the evolution of the system until
        the condition set by endQ argument is false.
        order = 2, 4, 6 or 8 the order of the non-linear integrator
@@ -146,7 +146,8 @@ def run_non_linear(lat, V, sim, evo, postp, model, start, end, data_path,
 
         "Solve non-linear equations:"
         solve_non_linear(lat, V, sim, evo, postp, model, data_folder,
-                         order, endQ, print_Q, print_w, flush)
+                         order, endQ, adaptive, print_Q, print_w,
+                         flush)
             
         i0_sum += sim.i0
 

@@ -52,6 +52,9 @@ class Model:
         "Interaction terms of the fields:"
         self.V_int = ["0.5*C3*f1**2*f2**2"]
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  []
+
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.m2f1, self.m2f2, self.g2]
@@ -69,13 +72,17 @@ class Model:
         self.rho_m0 = 0.
 
         "Time step:"
-        self.dtau = 1./(2*1024*self.m)
+        self.dtau = 2*1./(1024*self.m)
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(10000*self.m)
 
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = True#False#
+
         "Lattice side length:"
-        self.L = 1./self.m
+        self.L = 5./self.m
 
         "Lattice size, where n should be a power of two:"
         self.n = 64
@@ -105,7 +112,7 @@ class Model:
         self.zetaQ = False#True#
 
         """Whether to solve tensor perturbations:"""
-        self.gwsQ = False#True#
+        self.gwsQ = True#False#
 
         "The reference value at which curvature perturbation is calculated:"
         self.H_ref = 1e-12
@@ -132,7 +139,7 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = False#True#
+        self.fieldsQ = True#False#
 
         "The used discretization. Options 'defrost' or 'hlattice'."
         self.discQ = 'defrost'#'hlattice'#'latticeeasy'#
@@ -152,7 +159,7 @@ class Model:
            Laplacian to calculate the spectra."""
         self.spect_gw_m = 'std'#'k_eff'#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = True#False#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""

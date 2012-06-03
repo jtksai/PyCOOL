@@ -49,6 +49,15 @@ def kernel_pd_gpu_code(lat, V, field_i, write_code=False):
         else:
             V_term += '0.0'
 
+    if lat.tmpQ:
+        tmp_trms = ''
+        for j in xrange(len(V.tmp_terms)):
+            tmp_trms += 'tmp' + str(j + 1) + ' = ' + V.tmp_terms[j] + ';\n'
+        trms = len(V.tmp_terms)
+    else:
+        tmp_trms = ''
+        trms = 0
+
     f_code = tpl.render(kernel_name_c=kernel_name,
                         type_name_c = lat.prec_string,
                         p_coeff_l_c = V.p_coeff_l,
@@ -66,7 +75,10 @@ def kernel_pd_gpu_code(lat, V, field_i, write_code=False):
                         other_i_c = other_fields,
                         eq_sign_c = eq_sign,
                         V_c = V_term,
-                        dV2_c = V.d2V_pd[i])
+                        dV2_c = V.d2V_pd[i],
+                        tmp_c = lat.tmpQ,
+                        tmp_terms_c = tmp_trms,
+                        trms_c = trms)
 
     if write_code==True :
         g = codecs.open('output_kernels/debug_' + kernel_name + '.cu','w+',
@@ -314,12 +326,13 @@ class Postprocess:
             kernel.calc(*pd_args, **self.pd_params)
 
         for field in sim.fields:
-            field.w_k =  (sum(sum(field.d2V_sum_gpu.get()))/lat.VL +
-                          sum(sum(sim.pd_gpu.get()))/(6.*lat.VL))
+            sum1 = sum(sum(field.d2V_sum_gpu.get()))/lat.VL
+            sum2 = sum(sum(sim.pd_gpu.get()))/(6.*lat.VL)
+            field.w_k =  sum1 + sum2
 
             "Note that m2_eff is actually a^2*d2V/df^2."
             if lat.m2_eff:
-                m2_eff = sum(sum(field.d2V_sum_gpu.get()))/lat.VL
+                m2_eff = sum1
                 field.m2_eff = m2_eff
                 field.m2_eff_list.append(m2_eff)
 

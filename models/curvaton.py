@@ -60,6 +60,9 @@ class Model:
         "Interaction terms of the fields:"
         self.V_int = ["0.5*C3*f1**2*f2**2"]
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  []
+
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.m2f1, self.m2f2, self.g2]
@@ -100,6 +103,10 @@ class Model:
         self.t_fin = 350./self.m
         self.t_fin_hom = 60./self.m
 
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
+
         "Use linearized evolution if True:"
         self.lin_evo = False#True#
 
@@ -107,7 +114,7 @@ class Model:
         self.homogenQ = False#True#
 
         "Set True to solve non-linearized evolution:"
-        self.evoQ = False#True#
+        self.evoQ = True#False#
 
         """Whether to solve tensor perturbations:"""
         self.gwsQ = False#True#
@@ -160,7 +167,7 @@ class Model:
            Laplacian to calculate the spectra."""
         #self.spect_m = 'k2_eff'#'defrost'#'latticeeasy'#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""

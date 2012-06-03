@@ -85,11 +85,14 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
    {% endfor %}
     {{ type_name_c }} D2f;
     {{ type_name_c }} sumi=0.;
-    //{{ type_name_c }} y, t, c=0.f;
 
     //{% if gw_c %}
     //{{ type_name_c }} Dxf, Dyf, Dzf;
     //{% endif %}
+
+    {% if tmp_c %}
+   {% for i in range(1,trms_c+1) %} {{ type_name_c }} tmp{{i}};{% endfor %}
+    {% endif %}
 
     /////////////////////////////////////////
     // load the initial data into smem
@@ -149,6 +152,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
+
         pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
         // pi{{ field_i_c }}_m[in_idx] = D2f;
 
@@ -176,12 +181,13 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
      }
 
     {% set foo = DIM_Z_c-1 %}
+    {% set foo2 = DIM_Z_c-2 %}
     /////////////////////////////////////////////////
     // advance in z direction until z={{ foo }}
     // z = {{ foo }} calculated seperately
 
     volatile unsigned int i;
-//#pragma unroll {{ foo }}
+//#pragma unroll {{ foo2 }}
     for(i=1; i<({{ foo }}); i++)
     {
         in_idx  += {{ stride_c }};
@@ -243,6 +249,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[0] = a(t)
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
           pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
           //pi{{ field_i_c }}_m[in_idx] = D2f;
@@ -327,6 +334,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  and to the potential function used
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
+
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
         pi{{ field_i_c }}_m[in_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
       //  pi{{ field_i_c }}_m[in_idx] = D2f;

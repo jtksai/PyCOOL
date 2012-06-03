@@ -132,6 +132,8 @@ class Lattice:
 
         self.dist = model.distQ
 
+        self.tmpQ = True if (len(model.tmp_var) > 0) else False
+
         self.postQ = True if self.spect or self.stats or self.dist else False
 
         "Lattice dimensions in x and k-space:"
@@ -200,7 +202,7 @@ class Lattice:
         ########################################
         """
 
-        if model.n == 32 or model.max_reg > 32:
+        if model.n == 32 or model.max_reg > 132:
             self.block_x = 16
             self.block_y = 8
             self.block_z = 1
@@ -429,6 +431,8 @@ class Potential:
             import sys
             sys.exit(("\nAll derivation and no potential function " +
                       "makes PyCOOL a dull boy!\n"))
+        if lat.tmpQ:
+            self.tmp_var = model.tmp_var
 
         "List of different coefficients in potential function:"
         self.C_list = ['C'+str(i) for i in xrange(1,len(model.C_coeff)+1)]
@@ -446,6 +450,14 @@ class Potential:
         """The following calculations will try to calculate the necessary
            forms needed in the different CUDA kernels:"""
 
+        """Temporary variables in CUDA form used in the H3 kernel:"""
+        if lat.tmpQ:
+            self.tmp_terms = [V_calc(x, n, self.f_list, lat.fields,
+                                   self.power_list, self.C_list, self.D_list,
+                                   'H3', deriv_n=0) for x in self.tmp_var]
+        else:
+            self.tmp_terms = '0.0'
+
         "Potential function V_{i} of field i in CUDA form used in H3 part:"
         if self.v_l != None and automatic:
             self.V_i_H3 = [V_calc(self.v_l[i], n, self.f_list, i+1,
@@ -460,14 +472,16 @@ class Potential:
         if len(self.v_int)>0 and self.v_int != ['']:
             self.V_int_H3 = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
-                                   'H3', deriv_n=0, multiplier='4')
+                                   'H3', deriv_n=0, multiplier='4',
+                                   tmpQ = lat.tmpQ, tmp_list = self.tmp_terms)
         else:
             "Use zero to avoid CUDA error messages:"
             self.V_int_H3 = '0.0'
 
         "Derivative dV/df_i for all field variables f_i in CUDA form:"
         self.dV_H3 = [V_calc(self.V, n, self.f_list, i+1, self.power_list,
-                             self.C_list, self.D_list, 'H3', deriv_n=1)
+                             self.C_list, self.D_list, 'H3', deriv_n=1,
+                             tmpQ = lat.tmpQ, tmp_list = self.tmp_terms)
                          for i in xrange(lat.fields)]
 
         """Potential function V_{i} of field i in CUDA form used in rho and
@@ -486,11 +500,11 @@ class Potential:
         if len(self.v_int)>0 and self.v_int != ['']:
             self.V_int_rp = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
-                                   'rp', deriv_n=0)
+                                   'rp', deriv_n=0,
+                                   tmpQ = lat.tmpQ, tmp_list = self.tmp_terms)
         else:
             "Use zero to avoid CUDA error messages:"
             self.V_int_rp = '0.0'
-
 
         "Derivative d2V/df_i^2 for all field variables f_i in CUDA form:"
         self.d2V_Cuda = [V_calc(self.V , n, self.f_list, i+1,
@@ -509,7 +523,8 @@ class Potential:
         if len(self.v_int)>0 and self.v_int != ['']:
             self.V_pd_int = V_calc(self.V_int, n, self.f_list, lat.fields,
                                    self.power_list, self.C_list, self.D_list,
-                                   'pd', multiplier = '4')
+                                   'pd', multiplier = '4',
+                                   tmpQ = lat.tmpQ, tmp_list = self.tmp_terms)
         else:
             "Use zero to avoid CUDA error messages:"
             self.V_pd_int = '0.0'
@@ -517,7 +532,8 @@ class Potential:
         "Derivative d2V/df_i^2 for all field variables f_i in CUDA form:"
         self.d2V_pd = [V_calc(self.V , n, self.f_list, i+1,
                               self.power_list,  self.C_list, self.D_list,
-                              'pd', deriv_n=2)
+                              'pd', deriv_n=2,
+                              tmpQ = lat.tmpQ, tmp_list = self.tmp_terms)
                        for i in xrange(lat.fields)]
 
         """Read the different numerical coefficients in front of the

@@ -35,6 +35,8 @@ __global__ void kernelH2_1({{ type_name_c }} *sumterm_w{% for i in range(1,field
     {{ type_name_c }} sum_i = 0.;
 
     volatile unsigned int i;
+
+#pragma unroll {{ DIM_Z_c }}
     for(i=0; i<({{ DIM_Z_c }}); i++)
     {
 

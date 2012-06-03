@@ -62,6 +62,8 @@ Files included:
     - spatial_corr.cu
 
   - Model files:
+    - AD.py
+    - AD2.py
     - chaotic.py
     - chaotic_massless.py
     - curvaton.py

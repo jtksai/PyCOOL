@@ -58,6 +58,9 @@ class Model:
         self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))"+
                        "+C4*(f1**2+f2**2)**3")]
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  ['log(D1*(f1**2+f2**2))']
+
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.m2f1, self.m2f2, self.K*self.m**2, 1.]
@@ -75,6 +78,10 @@ class Model:
         self.t_in = 100./self.m
         self.t_fin = 10000./self.m
         self.t_fin_hom = 10000./self.m
+
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
 
         "Initial values for homogeneous radiation and matter components:"
         self.rho_r0 = 3.*(2./(3.*self.t_in))**2.
@@ -157,7 +164,7 @@ class Model:
            the spectrums."""
         #self.spect_m = 'defrost'#'latticeeasy'
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""

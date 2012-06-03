@@ -53,6 +53,9 @@ class Model:
         "Interaction terms of the fields:"
         self.V_int = ["0.5*C3*f1**2*f2**2"]
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  []
+
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.lamb, self.m2f2, self.g2]
@@ -79,7 +82,7 @@ class Model:
         self.L = 10./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 2*64
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
@@ -91,6 +94,10 @@ class Model:
         self.t_in = 0.
         self.t_fin = 2000./self.m
         self.t_fin_hom = 256./self.m
+
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
 
         "If True write to file:"
         self.saveQ = True#False#
@@ -152,7 +159,7 @@ class Model:
            Laplacian to calculate the spectra."""
         self.spect_gw_m = 'std'#'k_eff'#
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = True#False#
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""

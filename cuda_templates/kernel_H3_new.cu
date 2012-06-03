@@ -101,6 +101,10 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     {{ type_name_c }} Dxf, Dyf, Dzf;
     {% endif %}
 
+    {% if tmp_c %}
+   {% for i in range(1,trms_c+1) %} {{ type_name_c }} tmp{{i}};{% endfor %}
+    {% endif %}
+
     /////////////////////////////////////////
     // load the initial data into shared mem
     // down data from the top of the lattice
@@ -162,7 +166,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     // South halo
     if (blockIdx.y == {{ gridy1 }}){
         // Periodic lattice
-        // In a multi-gpu implementation these values could be loaded fjennifer lopez heightrom a different device
+        // In a multi-gpu implementation these values could be loaded from a different device
         if (threadIdx.y < {{ radius_c }}){
             s_data[threadIdx.y + {{ blocky1 }}][threadIdx.x + {{ radius_c }}] = field{{ field_i_c }}[out_idx - ({{ blockIdy11 }})];
         }
@@ -242,6 +246,8 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
     //  f_coeff[0] = a(t)
     //  f_coeff[1] = dt*a(t)/(dx^2)
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
+
         pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
         //pi{{ field_i_c }}_m[out_idx] = D2f;
 
@@ -304,7 +310,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
 
         // Advance the slice (move the thread-front)
     {% if radiusm1 > 0%}
-        for (int j = {{ radiusm1 }} ; j > 0 ; j--)
+        for (j = {{ radiusm1 }} ; j > 0 ; j--)
             down[j] = down[j - 1];
     {% endif %}
 
@@ -433,6 +439,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[0] = a(t)
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
           pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
         // pi{{ field_i_c }}_m[out_idx] = D2f;
@@ -631,6 +638,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //  f_coeff[0] = a(t)
         //  f_coeff[1] = dt*a(t)/(dx^2)
 
+    {% if tmp_c %} {{ tmp_terms_c }} {% endif %}
 
          pi{{ field_i_c }}_m[out_idx] += f_coeff[0]*(D2f - ({{ dV_c }}));
 

@@ -7,7 +7,6 @@ pi = np.pi
 ###############################################################################
 """
 
-
 class Model:
     """Model class that defines the scalar field. Change these values
        for different models:"""
@@ -59,6 +58,10 @@ class Model:
         "Interaction terms of the fields:"
         self.V_int = [("C3*(f1**2+f2**2)*(log(D1*(f1**2+f2**2)))")]
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  ['log(D1*(f1**2+f2**2))']
+        #self.tmp_var =  []
+        
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.m2f1, self.m2f2, self.K*self.m**2]
@@ -73,7 +76,7 @@ class Model:
 
         "Initial and final times:"
         self.t_in = 0./self.m
-        self.t_fin = 2500./self.m
+        self.t_fin = 2000/self.m#3500./self.m
         self.t_fin_hom = 10000./self.m
 
         "Initial values for homogeneous radiation and matter components:"
@@ -81,20 +84,23 @@ class Model:
         self.rho_m0 = 0.#3.*(self.m)**2
 
         "Time step:"
-        self.dtau = 0.0005/self.m
+        self.dtau = 0.001/self.m
         #self.dtau = 1./(1000*m)
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
 
         "Time step for homogeneous system:"
         self.dtau_hom = 1./(2000*self.m)
 
         "Lattice side length:"
-        self.L = 1./self.m
+        self.L = 2./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 2*64
+        self.n = 64
 
         "Initial scale parameter:"
-        self.a_in = 1.0#0.1*(self.t_in*self.m)**(2./3.)
+        self.a_in = 1.0#1.0#0.1*(self.t_in*self.m)**(2./3.)
 
         "Limit for scale factor in linearized evolution:"
         self.a_limit = 2
@@ -118,7 +124,7 @@ class Model:
         self.sim_num = 1
 
         "How frequently to save data:"
-        self.flush_freq = 4*256
+        self.flush_freq = 10*64#10*4*256
         self.flush_freq_hom = 128*8
 
         "If True write to file:"
@@ -136,10 +142,10 @@ class Model:
 
         """If fieldsQ = True save the field data (fields, rho etc.) in
            the Silo files:"""
-        self.fieldsQ = False#True#False#
+        self.fieldsQ = True#False#
 
         "The used discretization. Options 'defrost' or 'hlattice'."
-        self.discQ = 'defrost'#'latticeeasy'#'hlattice'#
+        self.discQ = 'defrost'#'hlattice'#'latticeeasy'#
 
         "If spectQ = True calculate spectrums at the end:"
         self.spectQ = True
@@ -156,7 +162,7 @@ class Model:
            the spectrums."""
         #self.spect_m = 'defrost'#'latticeeasy'
 
-        "If distQ = True calculate empirical CDF and CDF at the end:"
+        "If distQ = True calculate empirical CDF and CDF:"
         self.distQ = False#True
 
         """If statQ = True calculate skewness and kurtosis of the fields:"""
@@ -175,7 +181,7 @@ class Model:
 
         """If testQ = True use a constant seed. Can be used for debugging and
            testing:"""
-        self.testQ = False
+        self.testQ = False#True#
 
         """If m2_effQ = True writes a*m_eff/m to SILO file. This includes
            also comoving number density."""
@@ -187,7 +193,7 @@ class Model:
         """Maximum number of registers useb per thread. If set to None uses
            default values 24 for single and 32 for double precision.
            Note that this will also affect the used block size"""
-        self.max_reg = 45
+        self.max_reg = 32
 
         
         """For curvature perturbation studies disable post-processing

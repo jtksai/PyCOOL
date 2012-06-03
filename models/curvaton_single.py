@@ -61,6 +61,9 @@ class Model:
         "Interaction terms of the fields:"
         self.V_int = ['']
 
+        "Temporary variable that can be used to make calculations a bit faster:"
+        self.tmp_var =  []
+
         """Numerical values for C1, C2, ... These will be multiplied by
            a**3*dtau:"""
         self.C_coeff = [self.m2f1, self.lamb2]
@@ -85,11 +88,15 @@ class Model:
         self.dtau_hom = 1./(10000*self.m)
         #self.dtau_hom = 1./(1000*self.m)
 
+        """If adaptQ = True scales conformal time with inverse scale factor
+           meaning that time steps are alsmost constant in physical time:"""
+        self.adaptQ = False
+
         "Lattice side length:"
-        self.L = 4*5./12./self.m
+        self.L = 5./12./self.m
 
         "Lattice size, where n should be a power of two:"
-        self.n = 4*64
+        self.n = 64
 
         "Initial scale parameter:"
         self.a_in = 1.
