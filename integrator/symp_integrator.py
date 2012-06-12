@@ -908,8 +908,8 @@ class Simulation:
                     + model.rho_m0)
         self.rho_in = self.rho
         self.rho_hom = self.rho
-        self.H = np.sqrt(lat.mpl**2.*self.rho/3.)
-        self.H_in = np.sqrt(lat.mpl**2.*self.rho_in/3.)
+        self.H = np.sqrt((lat.mpl**-2.)*self.rho/3.)
+        self.H_in = np.sqrt((lat.mpl**-2.)*self.rho_in/3.)
 
         self.H_list = [self.H]
         self.p = -6.*lat.VL_reduced*self.H*self.a**2.
@@ -1180,7 +1180,7 @@ class Simulation:
     def adjust_p(self, lat):
         """Use this only after initialization of the fields at t=t_in to
            include also the energy density of the perturbations in p"""
-        H = np.sqrt(self.rho/3.)
+        H = np.sqrt((lat.mpl**-2.)*self.rho/3.)
         self.p = -6*lat.VL_reduced*H*self.a**2.
 
     def adjust_fields(self, lat):
@@ -1747,8 +1747,8 @@ class Simulation:
                     + model.rho_m0)
         self.rho_in = self.rho
 
-        self.H = np.sqrt(lat.mpl**2.*self.rho/3.)
-        self.H_in = np.sqrt(lat.mpl**2.*self.rho_in/3.)
+        self.H = np.sqrt((lat.mpl**-2.)*self.rho/3.)
+        self.H_in = np.sqrt((lat.mpl**-2.)*self.rho_in/3.)
 
         self.H_list = [self.H]
 
@@ -2685,7 +2685,7 @@ def calc_rho_pres(lat, V, sim, rp_list, cuda_param_rp, cuda_args,
     "Energy density fraction of interaction terms:"
     omega_int = rho_inter/rho_tot
     
-    Fried_1 = a**2.*((sim.H)**2.- lat.mpl**2.*rho_tot/3.0)    
+    Fried_1 = a**2.*((sim.H)**2.- (lat.mpl**-2.)*rho_tot/3.0)    
     num_error_rel = Fried_1/(a**2.*sim.H**2.)
 
 
@@ -2812,7 +2812,7 @@ def calc_rho_pres_back(lat, V, sim, print_Q, flush=True):
     sim.H = (-p/(6*a**2.*lat.VL_reduced))
 
     Fried_1 = a**2.*((sim.H)**2. -
-                     lat.mpl**2.*(rho0)/3.0)
+                     (lat.mpl**-2.)*(rho0)/3.0)
     num_error_rel = Fried_1/(a**2.*sim.H**2.)
 
     if print_Q == True:
@@ -2848,7 +2848,7 @@ def calc_rho_pres_hom(lat, V, sim, print_Q, flush=True):
     sim.H_hom = (-p/(6*a**2.*lat.VL_reduced))
 
     Fried_1 = a**2.*((sim.H_hom)**2. -
-                     lat.mpl**2.*(rho0)/3.0)
+                     (lat.mpl**-2.)*(rho0)/3.0)
     num_error_rel = Fried_1/(a**2.*sim.H_hom**2.)
 
     if flush:

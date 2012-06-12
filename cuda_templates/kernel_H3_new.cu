@@ -269,7 +269,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         Dzf = c1_coeff[0]*(up[0] - down[0]) + 
               c1_coeff[1]*(up[1] - down[1]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
@@ -286,7 +286,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                            s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
         Dzf = c1_coeff[0]*(up[0] - down[0]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
@@ -463,7 +463,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         Dzf = c1_coeff[0]*(up[0] - down[0]) + 
               c1_coeff[1]*(up[1] - down[1]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
@@ -480,7 +480,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                            s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
         Dzf = c1_coeff[0]*(up[0] - down[0]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
@@ -661,7 +661,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         Dzf = c1_coeff[0]*(up[0] - down[0]) + 
               c1_coeff[1]*(up[1] - down[1]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);
@@ -678,7 +678,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
                            s_data[threadIdx.y + ({{ radiusm1 }})][threadIdx.x + {{ radius_c }}]);
         Dzf = c1_coeff[0]*(up[0] - down[0]);
 
-    //  f_coeff[3] = dt*2*mpl^2*2*a(t)^2/(dx^2)
+    //  f_coeff[3] = dt*2*mpl^-2*2*a(t)^2/(dx^2)
 
         piu11_m[out_idx] += f_coeff[3]*(Dxf*Dxf);
         piu12_m[out_idx] += f_coeff[3]*(Dxf*Dyf);

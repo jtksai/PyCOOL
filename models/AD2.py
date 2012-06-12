@@ -13,7 +13,7 @@ class Model:
 
     def __init__(self):
 
-        self.model_name = 'Affleck-Dine mechanism'
+        self.model_name = 'Affleck-Dine mechanism gauge'
 
         "Model parameters and values:"
 

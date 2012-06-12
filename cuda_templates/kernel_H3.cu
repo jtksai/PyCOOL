@@ -167,7 +167,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
         //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
 
-    //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
+    //  f_coeff[2] = dt*2*mpl^-2*0.25*a(t)^2/(dx^2)
 
         piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
         piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
@@ -264,7 +264,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
         //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
 
-        //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
+        //  f_coeff[2] = dt*2*mpl^-2*0.25*a(t)^2/(dx^2)
 
           piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
           piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);
@@ -353,7 +353,7 @@ __global__ void {{ kernel_name_c }}({{ type_name_c }} *sumterm_w{% for i in rang
         //Dyf = smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x];
         //Dzf = sup_data[threadIdx.y][threadIdx.x] - sdwn_data[threadIdx.y][threadIdx.x];
 
-        //  f_coeff[2] = dt*2*mpl^2*0.25*a(t)^2/(dx^2)
+        //  f_coeff[2] = dt*2*mpl^-2*0.25*a(t)^2/(dx^2)
 
         piu11_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1]);
         piu12_m[in_idx] += f_coeff[2]*(smid_data[threadIdx.y][threadIdx.x+1] - smid_data[threadIdx.y][threadIdx.x-1])*(smid_data[threadIdx.y+1][threadIdx.x] - smid_data[threadIdx.y-1][threadIdx.x]);

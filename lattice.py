@@ -459,7 +459,7 @@ class Potential:
             self.tmp_terms = '0.0'
 
         "Potential function V_{i} of field i in CUDA form used in H3 part:"
-        if self.v_l != None and automatic:
+        if len(self.v_l)>0 and automatic:
             self.V_i_H3 = [V_calc(self.v_l[i], n, self.f_list, i+1,
                                   self.power_list, self.C_list, self.D_list,
                                   'H3', deriv_n=0,multiplier='4')
@@ -486,7 +486,7 @@ class Potential:
 
         """Potential function V_{i} of field i in CUDA form used in rho and
            pressure kernels:"""
-        if self.v_l != None and automatic:
+        if len(self.v_l)>0 and automatic:
             self.V_i_rp = [V_calc(self.v_l[i], n, self.f_list, i+1,
                                   self.power_list, self.C_list, self.D_list,
                                   'rp', deriv_n=0)
@@ -512,7 +512,7 @@ class Potential:
                                 self.D_list, 'H3', deriv_n=2)
                          for i in xrange(lat.fields)]
 
-        if self.v_l != None and automatic:
+        if len(self.v_l)>0 and automatic:
             self.V_pd_i = [V_calc(self.v_l[i] , n, self.f_list, i+1,
                                   self.power_list,  self.C_list, self.D_list,
                                   'pd', multiplier = '4')
@@ -598,8 +598,8 @@ class Potential:
            of the scalar fields when using 'defrost' discretization
            and the fourth is used when 'hlattice' dicretization is used."""
         return np.array([a, a*dt*lat.dx**(-2.),
-                         0.5*lat.mpl**2*a**2.*dt*lat.dx**(-2.),
-                         2*lat.mpl**2*a**2.*dt*lat.dx**(-2.)],
+                         0.5*(lat.mpl**-2)*a**2.*dt*lat.dx**(-2.),
+                         2*(lat.mpl**-2)*a**2.*dt*lat.dx**(-2.)],
                         dtype = lat.prec_real)
 
     def gw_array(self, lat, a, dt):
